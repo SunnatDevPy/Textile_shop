@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="774920ee-63fe-49ac-b413-a3f7c8d0cf31" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.env" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/Textile_shop.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/buttuns/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/buttuns/inline.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/detail.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/handlers/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/handlers/admin.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/handlers/group_order.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/handlers/start.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/language.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/state/states.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bot/utils.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/dispatcher.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/admin_users.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/bot_users.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/call_orders.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/cart.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/contacts.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/excel_save.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/geopy_project.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/jwt_.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/love_products.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/main_photos.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/orders.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/shop.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/shop_category.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/shop_products.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fast_routers/work_times.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/custom_types.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/database.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/products_model.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/shop_model.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/shop_model.test.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/models/users.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_main.http" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/utils/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/utils/base_models_pydantic.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/utils/details.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="36" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="FastAPI main" />
+        <option value="FastAPI test_main" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 1
+}]]></component>
+  <component name="ProjectId" id="3BZFAOMDjpH4DjYXQ3hKIMoJw6L" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "ai.playground.ignore.import.keys.banner.in.settings": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "C:/Users/stalk/FastAPIProject/Textile_shop",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\stalk\FastAPIProject\Textile_shop" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="Textile_shop" type="Python.FastAPI">
+      <option name="file" value="$PROJECT_DIR$/main.py" />
+      <module name="Textile_shop" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="launchJavascriptDebuger" value="false" />
+      <method v="2" />
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-PY-253.31033.139" />
+        <option value="bundled-python-sdk-2653e85de345-6d6dccd035ac-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.31033.139" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="774920ee-63fe-49ac-b413-a3f7c8d0cf31" name="Changes" comment="" />
+      <created>1774688541243</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1774688541243</updated>
+      <workItem from="1774688542331" duration="422000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>
