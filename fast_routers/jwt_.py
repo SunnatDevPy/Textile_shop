@@ -1,26 +1,20 @@
 from datetime import datetime, timedelta, timezone
-from http.client import HTTPException
 from typing import Annotated
 
 import bcrypt
 import jwt
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from icecream import icecream
-from jose import JWTError
-from passlib.context import CryptContext
-from passlib.exc import InvalidTokenError
 from pydantic import BaseModel
 from starlette import status
 
-from models import AdminPanelUser, BotUser
+from models import AdminPanelUser
 
 SECRET_KEY = "selectstalker"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480
 REFRESH_TOKEN_EXPIRE_DAYS = 100
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 jwt_router = APIRouter()
 
 credentials_exception = HTTPException(
@@ -63,28 +57,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        icecream.ic(payload)
         user_id = payload.get("user_id")
         if user_id is None:
             raise credentials_exception
-    except InvalidTokenError:
+    except jwt.PyJWTError:
         raise credentials_exception
     user = await AdminPanelUser.get(int(user_id))
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-
-async def get_current_user_bot(token: Annotated[str, Depends(oauth2_scheme)]):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        icecream.ic(payload)
-        user_id = payload.get("user_id")
-        if user_id is None:
-            raise credentials_exception
-    except InvalidTokenError:
-        raise credentials_exception
-    user = await BotUser.get(int(user_id))
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -126,21 +104,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@jwt_router.post("/bot-login")
-async def login_for_access_token(user_id: int):
-    user = await BotUser.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"user_id": str(user.id)},
-        expires_delta=access_token_expires
-    )
-
-    return {"access_token": access_token, "token_type": "bearer"}
-
-
 # @jwt_router.post("/admin-token", response_model=Token)
 # async def login_for_access_token(user_id: Annotated[UserId, Depends()]) -> Token:
 #     user = await AdminPanelUser.get(user_id.user_id)
@@ -156,16 +119,17 @@ async def login_for_access_token(user_id: int):
 
 
 @jwt_router.post("/refresh")
-def refresh_access_token(refresh_token: str):
+def refresh_token_endpoint(refresh_token: str):
     try:
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("user_id")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    new_access_token = refresh_access_token(
+    new_access_token = create_access_token(
         data={"user_id": str(user_id)},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
     return {"access_token": new_access_token, "token_type": "bearer"}

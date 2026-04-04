@@ -1,16 +1,6 @@
-from fast_routers.bot_users import bot_user_router
-from fast_routers.call_orders import call_order_router
-from fast_routers.cart import cart_router
-from fast_routers.contacts import contact_router
-from fast_routers.excel_save import excel_router
-from fast_routers.geopy_project import geolocator
-from fast_routers.jwt_ import jwt_router
-from fast_routers.love_products import favourites_router
-from fast_routers.main_photos import main_photos_router
-from fast_routers.orders import order_router
-from fast_routers.shop_products import shop_product_router
-from fast_routers.shop_category import shop_category_router
-from fast_routers.admin_users import admin_user_router
-from fast_routers.shop import shop_router
-from fast_routers.work_times import work_router
-
+from fast_routers.products import shop_product_router
+from fast_routers.product_subresources import (
+    product_detail_router,
+    product_items_router,
+    product_photo_router,
+)

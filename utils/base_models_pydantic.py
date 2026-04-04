@@ -4,56 +4,54 @@ from typing import Optional, List
 from pydantic import BaseModel
 
 
-class WorkModel(BaseModel):
+
+class ProductItemSchema(BaseModel):
     id: int
-    shop_id: int
-    open_time: str
-    close_time: str
-    weeks: list
+    product_id: int
+    color_id: int
+    size_id: int
+    total_count: int
 
 
-class ListShopsModel(BaseModel):
-    id: Optional[int]
-    owner_id: Optional[int]
-    name_uz: Optional[str]
-    name_ru: Optional[str]
-    lat: Optional[float]
-    long: Optional[float]
-    address: Optional[str] = None
-    order_group_id: Optional[int] = None
-    cart_number: Optional[int] = None
-    photo: Optional[str] = None
-    is_active: Optional[bool] = None
-    work: Optional[List[WorkModel]] = None
-
-
-class ProductTipSchema(BaseModel):
+class ProductDetailSchema(BaseModel):
     id: int
-    price: int
-    volume: int
-    unit: str
+    name_uz: str
+    name_ru: str
+    name_eng: str
+
+
+class ProductPhotoSchema(BaseModel):
+    id: int
+    product_id: int
+    photo: str
 
 
 class ProductList(BaseModel):
     id: int
     name_uz: str
     name_ru: str
+    name_eng: str
     description_uz: str
     description_ru: str
-    owner_id: int
+    description_eng: str
+
     category_id: int
+    collection_id: int
+    category_id: int
+
     photo: str
-    shop_id: int
     is_active: bool
     price: int
-    volume: int
-    unit: str
-    tips: Optional[List[ProductTipSchema]] = None  # Prevent recursion
+    items: Optional[List[ProductItemSchema]] = None  # Prevent recursion
+    details: Optional[List[ProductDetailSchema]] = None
+    photos: Optional[List[ProductDetailSchema]] = None
+
 
 
 class OrderItemsModel(BaseModel):
     id: int
     product_id: int
+    product_item_id: int
     order_id: int
     count: int
     volume: int
@@ -81,25 +79,6 @@ class OrderModel(BaseModel):
     order_items: Optional[list[OrderItemsModel]] = None
 
 
-class FavouritesSchema(BaseModel):
-    id: int
-    product_id: int
-    shop_id: int
-    bot_user_id: int
-    product: Optional[ProductList] = None
-    is_active: Optional[bool] = None
-
-
-class CartModel(BaseModel):
-    id: int
-    bot_user_id: int
-    product_id: int
-    shop_id: int
-    tip_id: int
-    count: int
-    total: int
-    product_in_cart: Optional[ProductList] = None
-    tip: Optional[ProductTipSchema] = None
 
 
 class ListCategoryModel(BaseModel):
@@ -111,18 +90,3 @@ class ListCategoryModel(BaseModel):
     is_active: bool
     products: Optional[List['ProductList']] = None
 
-
-class ListShopsModelAll(BaseModel):
-    id: Optional[int]
-    owner_id: Optional[int]
-    name_uz: Optional[str]
-    name_ru: Optional[str]
-    lat: Optional[float]
-    long: Optional[float]
-    address: Optional[str] = None
-    order_group_id: Optional[int] = None
-    cart_number: Optional[int] = None
-    photo: Optional[str] = None
-    is_active: Optional[bool] = None
-    work: Optional[List[WorkModel]] = None
-    category: Optional[List['ListCategoryModel']] = None

@@ -1,9 +1,6 @@
-import logging
-from _ctypes_test import func
 from datetime import datetime
 
-from sqlalchemy import BigInteger, delete as sqlalchemy_delete, DateTime, update as sqlalchemy_update, func, desc
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy import BigInteger, delete as sqlalchemy_delete, DateTime, update as sqlalchemy_update, func
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncAttrs
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.future import select
@@ -59,16 +56,17 @@ class AbstractClass:
     async def commit():
         try:
             await db.commit()
-        except Exception as e:
-            print(e)
+        except Exception:
             await db.rollback()
+            raise
 
     @classmethod
-    async def create(cls, **kwargs):  # Create
-        object_ = cls(**kwargs)
-        db.add(object_)
+    async def create(cls, **kwargs):
+        obj = cls(**kwargs)
+        db.add(obj)
         await cls.commit()
-        return object_
+        await db.refresh(obj)
+        return obj
 
     @classmethod
     async def update(cls, id_, **kwargs):
@@ -76,56 +74,29 @@ class AbstractClass:
             sqlalchemy_update(cls)
             .where(cls.id == id_)
             .values(**kwargs)
-            .execution_options(synchronize_session="fetch")
+            .returning(cls)
         )
-        await db.execute(query)
-        try:
-            await cls.commit()
-        except Exception as e:
-            await db.rollback()
-            print(f"Ошибка при создании объекта {cls.__name__}: {e}")
-            return None
+        result = await db.execute(query)
+        await cls.commit()
+        return result.scalar_one_or_none()
 
-        # await cls.commit()
+    @classmethod
+    async def get_or_none(cls, _id: int, *, relationship=None):
+        query = select(cls).where(cls.id == _id)
+
+        if relationship is not None:
+            # relationship может быть одним relationship или списком
+            if isinstance(relationship, (list, tuple)):
+                query = query.options(*(selectinload(r) for r in relationship))
+            else:
+                query = query.options(selectinload(relationship))
+
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
 
     @classmethod
     async def get(cls, _id, *, relationship=None):
         query = select(cls).where(cls.id == _id)
-        if relationship:
-            query = query.options(selectinload(relationship))
-        return (await db.execute(query)).scalar()
-
-    @classmethod
-    async def get_from_username(cls, user_name, *, relationship=None):
-        query = select(cls).where(cls.username == user_name)
-        if relationship:
-            query = query.options(selectinload(relationship))
-        return (await db.execute(query)).scalar()
-
-    @classmethod
-    async def from_user(cls, _id, *, relationship=None):
-        query = select(cls).where(cls.bot_user_id == _id).order_by(desc(cls.id))
-        if relationship:
-            query = query.options(selectinload(relationship))
-        return (await db.execute(query)).scalars()
-
-    @classmethod
-    async def get_shop_product_id(cls, product_id, shop_id, *, relationship=None):
-        query = select(cls).where(cls.id == product_id, cls.shop_id == shop_id).order_by(desc(cls.id))
-        if relationship:
-            query = query.options(selectinload(relationship))
-        return (await db.execute(query)).scalars().all()
-
-    @classmethod
-    async def get_shop_product(cls, product_id, shop_id, *, relationship=None):
-        query = select(cls).where(cls.id == product_id, cls.shop_id == shop_id).order_by(desc(cls.id))
-        if relationship:
-            query = query.options(selectinload(relationship))
-        return (await db.execute(query)).scalar()
-
-    @classmethod
-    async def from_user_order(cls, _id, *, relationship=None):
-        query = select(cls).where(cls.user_id == _id).order_by(desc(cls.id))
         if relationship:
             query = query.options(selectinload(relationship))
         return (await db.execute(query)).scalar()
@@ -172,40 +143,16 @@ class AbstractClass:
         return (await db.execute(select(cls))).scalars().all()
 
     @classmethod
-    async def get_cart_from_shop(cls, user_id, shop_id):
-        return (await db.execute(select(cls).where(cls.bot_user_id == user_id, cls.shop_id == shop_id))).scalars().all()
-
-    @classmethod
-    async def get_from_shop(cls, shop_id):
-        return (await db.execute(select(cls).where(cls.shop_id == shop_id))).scalars().all()
-
-    @classmethod
-    async def from_shop(cls, shop_id):
-        return (await db.execute(select(cls).where(cls.shop_id == shop_id))).scalars().all()
-
-    @classmethod
-    async def get_cart_from_product(cls, user_id, product_id):
-        return (await db.execute(select(cls).where(cls.bot_user_id == user_id, cls.product_id == product_id))).scalar()
-
-    @classmethod
-    async def get_from_bot_user(cls, user_id):
-        return (await db.execute(select(cls).where(cls.bot_user_id == user_id))).scalars().all()
-
-    @classmethod
     async def get_order_items(cls, order_id):
         return (await db.execute(select(cls).where(cls.order_id == order_id))).scalars().all()
 
     @classmethod
-    async def get_from_name(cls, address):
-        return (await db.execute(select(cls).where(cls.address == address))).scalars().all()
-
-    @classmethod
-    async def search_shops(cls, name, category_id=None):
+    async def search(cls, name, category_id=None):
         if category_id:
             return (await db.execute(
                 select(cls).where(cls.category_id == category_id, cls.name_uz.ilike(f"%{name}%")))).scalars().all()
         else:
-            return (await db.execute(select(cls).filter(cls.name_uz.ilike(f"%{name}%")))).scalars().all()
+            return (await db.execute(select(cls).where(cls.name_uz.ilike(f"%{name}%")))).scalars().all()
 
 
 # def run_async(self, func, *args, **kwargs):

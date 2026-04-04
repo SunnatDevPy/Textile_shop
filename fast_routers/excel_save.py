@@ -7,8 +7,8 @@ from fastapi import Response
 from fastapi.params import Depends
 from pydantic import BaseModel
 from starlette import status
-from fast_routers.jwt_ import get_current_user
-from models import AdminPanelUser, ShopProduct, ShopCategory, Shop, ProductTip
+from fast_routers.admin_auth import verify_admin_credentials
+from models import AdminUser, ShopProduct, ShopCategory, Shop, ProductTip
 
 excel_router = APIRouter(prefix='/excel', tags=['Excel'])
 
@@ -18,8 +18,7 @@ class UserId(BaseModel):
 
 
 @excel_router.post("/product", name="Create or Update Product")
-async def upload_excel(user: Annotated[UserId, Depends(get_current_user)], excel_file: UploadFile = File(...)):
-    user: AdminPanelUser = await AdminPanelUser.get(user.id)
+async def upload_excel(user: Annotated[AdminUser, Depends(verify_admin_credentials)], excel_file: UploadFile = File(...)):
     if user is None:
         return Response("Item not found", status.HTTP_404_NOT_FOUND)
 
@@ -95,8 +94,7 @@ async def upload_excel(user: Annotated[UserId, Depends(get_current_user)], excel
 
 
 @excel_router.post(path='/tips', name="Create or Update Product tips")
-async def list_category_shop(user: Annotated[UserId, Depends(get_current_user)], excel_file: UploadFile = File()):
-    user: AdminPanelUser = await AdminPanelUser.get(user.id)
+async def list_category_shop(user: Annotated[AdminUser, Depends(verify_admin_credentials)], excel_file: UploadFile = File()):
     if user is None:
         return Response("Item not found", status.HTTP_404_NOT_FOUND)
 

@@ -4,7 +4,6 @@ from typing import Optional
 
 import requests
 from dotenv import load_dotenv
-from fastapi.templating import Jinja2Templates
 
 load_dotenv()
 
@@ -38,6 +37,8 @@ class Configuration:
     """All in one configuration's class"""
     db = DatabaseConfig()
     SECRET_KEY: str = os.getenv('SECRET_KEY')
+    ADMIN_PASS: str = os.getenv('ADMIN_PASS')
+    ADMIN_USERNAME: str = os.getenv('ADMIN_USERNAME')
     bot = BOT()
 
 # class CustomFileSystemStorage(FileSystemStorage):

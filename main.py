@@ -6,30 +6,28 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from config import conf
-from fast_routers import shop_product_router, shop_category_router, main_photos_router, work_router, bot_user_router, \
-    admin_user_router, order_router, cart_router, jwt_router, shop_router, favourites_router, contact_router, \
-    excel_router, call_order_router
+from fast_routers.products import shop_product_router
+from fast_routers.product_subresources import (
+    product_detail_router,
+    product_items_router,
+    product_photo_router,
+)
+from fast_routers.main_photos import main_photos_router
+from fast_routers.jwt_ import jwt_router
+from fast_routers.orders import order_router
 from models import db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.mount("/media", StaticFiles(directory='media'), name='media')
-    app.include_router(bot_user_router)
-    app.include_router(admin_user_router)
-    app.include_router(shop_router)
-    app.include_router(work_router)
-    app.include_router(shop_category_router)
     app.include_router(shop_product_router)
-    app.include_router(favourites_router)
-    # app.include_router(generate_router)
+    app.include_router(product_photo_router)
+    app.include_router(product_items_router)
+    app.include_router(product_detail_router)
     app.include_router(main_photos_router)
-    app.include_router(cart_router)
     app.include_router(order_router)
-    app.include_router(contact_router)
     app.include_router(jwt_router)
-    app.include_router(excel_router)
-    app.include_router(call_order_router)
     await db.create_all()
     yield
 
