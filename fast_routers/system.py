@@ -152,11 +152,11 @@ async def seed_fake_data(
     # ProductPhoto modeli UploadFile qabul qiladi, shu sababli fake seedda rasm yaratilmaydi.
     created["product_photos"] = 0
 
-    payments = [Order.Payment.CLICK, Order.Payment.PAYME, Order.Payment.CASH]
+    payments = [Order.Payment.CLICK.value, Order.Payment.PAYME.value, Order.Payment.CASH.value]
     statuses = [
-        Order.StatusOrder.NEW,
-        Order.StatusOrder.PAID,
-        Order.StatusOrder.IS_PROCESS,
+        Order.StatusOrder.NEW.value,
+        Order.StatusOrder.PAID.value,
+        Order.StatusOrder.IS_PROCESS.value,
     ]
     product_items = await ProductItems.all()
 
@@ -199,6 +199,43 @@ async def seed_fake_data(
             "clear_before": clear_before,
             "cleared": cleared,
             "created": created,
+            "note": "Bu endpoint vaqtinchalik (dev) uchun.",
+        }
+    )
+
+
+@system_router.delete("/dev/clear-fake", summary="DEV: fake/test ma'lumotlarni tozalash (super admin)")
+async def clear_fake_data(
+    _: bool = Depends(verify_super_admin_credentials),
+):
+    # FK cheklovlari uchun tozalash tartibi muhim.
+    del_order_items = await db.execute(sqlalchemy_delete(OrderItem))
+    del_orders = await db.execute(sqlalchemy_delete(Order))
+    del_product_details = await db.execute(sqlalchemy_delete(ProductDetail))
+    del_product_photos = await db.execute(sqlalchemy_delete(ProductPhoto))
+    del_product_items = await db.execute(sqlalchemy_delete(ProductItems))
+    del_products = await db.execute(sqlalchemy_delete(Product))
+    del_sizes = await db.execute(sqlalchemy_delete(Size))
+    del_colors = await db.execute(sqlalchemy_delete(Color))
+    del_collections = await db.execute(sqlalchemy_delete(Collection))
+    del_categories = await db.execute(sqlalchemy_delete(Category))
+    await db.commit()
+
+    return ok_response(
+        {
+            "message": "Fake/test data tozalandi",
+            "cleared": {
+                "order_items": int(del_order_items.rowcount or 0),
+                "orders": int(del_orders.rowcount or 0),
+                "product_details": int(del_product_details.rowcount or 0),
+                "product_photos": int(del_product_photos.rowcount or 0),
+                "product_items": int(del_product_items.rowcount or 0),
+                "products": int(del_products.rowcount or 0),
+                "sizes": int(del_sizes.rowcount or 0),
+                "colors": int(del_colors.rowcount or 0),
+                "collections": int(del_collections.rowcount or 0),
+                "categories": int(del_categories.rowcount or 0),
+            },
             "note": "Bu endpoint vaqtinchalik (dev) uchun.",
         }
     )

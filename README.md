@@ -161,6 +161,34 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 }
 ```
 
+### `DELETE /system/dev/clear-fake` (Super admin, vaqtinchalik)
+- Vazifa: fake/test ma'lumotlarni tozalaydi.
+- Auth: Basic (`super admin` `.env` credentials)
+- Qaytadi (`ok_response`):
+```json
+{
+  "ok": true,
+  "data": {
+    "message": "Fake/test data tozalandi",
+    "cleared": {
+      "order_items": 12,
+      "orders": 12,
+      "product_details": 8,
+      "product_photos": 0,
+      "product_items": 8,
+      "products": 8,
+      "sizes": 8,
+      "colors": 8,
+      "collections": 8,
+      "categories": 8
+    },
+    "note": "Bu endpoint vaqtinchalik (dev) uchun."
+  },
+  "meta": {},
+  "error": null
+}
+```
+
 ---
 
 ## 4.2 Frontend API (`/frontend`) - Public
@@ -777,6 +805,21 @@ Ruxsat etilgan statuslar:
   - `sold_items_count` - sotilgan mahsulot birliklari yig'indisi
   - `sales_amount` - sotuv summasi (`OrderItem.total` yig'indisi)
   - `payment_breakdown` - to'lov turi bo'yicha kesim (`click`, `payme`, `cash`)
+
+### `GET /history/stats/analytics-v2`
+- Vazifa: kengaytirilgan analytics (top products, conversion, avg check, LTV, repeat sales, sales by day/week).
+- Query:
+  - `date_from` (ISO)
+  - `date_to` (ISO)
+  - `top_limit` (default 10, max 100)
+- Qaytadi (`ok_response`) ichida quyidagilar bor:
+  - `top_products` - eng ko'p sotilgan mahsulotlar (soni va revenue)
+  - `conversion_by_status` - statuslar bo'yicha konversiya (`orders_count`, `rate`)
+  - `average_check` - o'rtacha chek
+  - `ltv` - customer LTV (`contact` bo'yicha)
+  - `repeat_sales` - takroriy sotuv metrikasi
+  - `sales_by_day` - kunlik sotuv
+  - `sales_by_week` - haftalik sotuv
 
 ---
 

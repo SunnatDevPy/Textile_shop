@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 
 from fast_routers.admin_auth import verify_admin_credentials
@@ -26,6 +27,16 @@ def _auth_override():
     return SimpleNamespace(id=1, username="operator", status="operator", is_active=True)
 
 
+@pytest.fixture(autouse=True)
+def _mock_startup_db(monkeypatch):
+    from main import db as app_db
+
+    async def _noop_create_all():
+        return None
+
+    monkeypatch.setattr(app_db, "create_all", _noop_create_all)
+
+
 def test_product_search_endpoint(monkeypatch):
     from fast_routers import products as products_router
 
@@ -34,13 +45,12 @@ def test_product_search_endpoint(monkeypatch):
 
     monkeypatch.setattr(products_router.Product, "search", fake_search)
     app.dependency_overrides[verify_admin_credentials] = _auth_override
-    client = TestClient(app)
-
-    response = client.get("/products/search", params={"search": "ip"})
-    assert response.status_code == 200
-    body = response.json()
-    assert body["ok"] is True
-    assert isinstance(body["data"], list)
+    with TestClient(app) as client:
+        response = client.get("/products/search", params={"search": "ip"})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["ok"] is True
+        assert isinstance(body["data"], list)
 
     app.dependency_overrides.clear()
 
@@ -53,13 +63,12 @@ def test_order_search_endpoint(monkeypatch):
 
     monkeypatch.setattr(orders_router.db, "execute", fake_execute)
     app.dependency_overrides[verify_admin_credentials] = _auth_override
-    client = TestClient(app)
-
-    response = client.get("/order/search", params={"status_q": "yangi"})
-    assert response.status_code == 200
-    body = response.json()
-    assert body["ok"] is True
-    assert body["meta"]["count"] == 1
+    with TestClient(app) as client:
+        response = client.get("/order/search", params={"status_q": "yangi"})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["ok"] is True
+        assert body["meta"]["count"] == 1
 
     app.dependency_overrides.clear()
 
@@ -71,10 +80,9 @@ def test_click_prepare_endpoint(monkeypatch):
         return SimpleNamespace(id=order_id, payment="click", status="yangi")
 
     monkeypatch.setattr(payments_router.Order, "get_or_none", fake_get_or_none)
-    client = TestClient(app)
-
-    response = client.post("/payments/click/prepare", json={"order_id": 1})
-    assert response.status_code == 200
-    body = response.json()
-    assert body["ok"] is True
-    assert body["data"]["order_id"] == 1
+    with TestClient(app) as client:
+        response = client.post("/payments/click/prepare", json={"order_id": 1})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["ok"] is True
+        assert body["data"]["order_id"] == 1

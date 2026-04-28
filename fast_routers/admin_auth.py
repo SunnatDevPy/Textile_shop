@@ -2,6 +2,7 @@
 
 import secrets
 from typing import Annotated
+from types import SimpleNamespace
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
@@ -23,6 +24,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 async def verify_admin_credentials(
     credentials: Annotated[HTTPBasicCredentials, Depends(security)],
 ) -> AdminUser:
+    # Super admin (.env) ham oddiy admin endpointlarga kira olishi kerak.
+    admin_username = Configuration.ADMIN_USERNAME
+    admin_pass_hash = Configuration.ADMIN_PASS
+    if secrets.compare_digest(credentials.username, admin_username) and verify_password(
+        credentials.password, admin_pass_hash
+    ):
+        return SimpleNamespace(
+            id=0,
+            username=admin_username,
+            status=AdminUser.StatusUser.ADMIN.value,
+            is_active=True,
+        )
+
     user = await AdminUser.filter(AdminUser.username == credentials.username)
     if not user:
         raise HTTPException(
