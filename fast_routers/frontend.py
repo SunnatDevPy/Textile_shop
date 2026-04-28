@@ -43,69 +43,112 @@ async def frontend_bootstrap(include_inactive: bool = False):
     summary="Frontend uchun ma'lumotlar (normalized, duplicate kamroq)",
 )
 async def frontend_bootstrap_normalized(include_inactive: bool = False):
-    products = await Product.all()
-    if not include_inactive:
-        products = [p for p in products if bool(getattr(p, "is_active", False))]
+    products_all = await Product.all()
+    products = products_all if include_inactive else [p for p in products_all if bool(getattr(p, "is_active", False))]
 
-    categories = {}
-    collections = {}
-    colors = {}
-    sizes = {}
+    categories_all = await Category.all()
+    collections_all = await Collection.all()
+    colors_all = await Color.all()
+    sizes_all = await Size.all()
+    items_all = await ProductItems.all()
+    photos_all = await ProductPhoto.all()
+    details_all = await ProductDetail.all()
+
+    product_ids_set = {int(p.id) for p in products}
+    category_ids_set = {int(p.category_id) for p in products}
+    collection_ids_set = {int(p.collection_id) for p in products}
+
+    items_by_product = {}
+    used_color_ids = set()
+    used_size_ids = set()
     product_items = {}
+    for item in items_all:
+        pid = int(item.product_id)
+        if pid not in product_ids_set:
+            continue
+        iid = int(item.id)
+        items_by_product.setdefault(pid, []).append(iid)
+        used_color_ids.add(int(item.color_id))
+        used_size_ids.add(int(item.size_id))
+        product_items[iid] = {
+            "id": iid,
+            "product_id": pid,
+            "color_id": int(item.color_id),
+            "size_id": int(item.size_id),
+            "total_count": int(item.total_count),
+        }
+
+    photos_by_product = {}
     product_photos = {}
+    for ph in photos_all:
+        pid = int(ph.product_id)
+        if pid not in product_ids_set:
+            continue
+        phid = int(ph.id)
+        photos_by_product.setdefault(pid, []).append(phid)
+        product_photos[phid] = {
+            "id": phid,
+            "product_id": pid,
+            "photo": str(getattr(ph, "photo", "")),
+        }
+
+    details_by_product = {}
     product_details = {}
-
-    products_entities = {}
-
-    for p in products:
-        categories[p.category.id] = {
-            "id": int(p.category.id),
-            "name_uz": p.category.name_uz,
-            "name_ru": p.category.name_ru,
-            "name_eng": p.category.name_eng,
-        }
-        collections[p.collection.id] = {
-            "id": int(p.collection.id),
-            "name_uz": p.collection.name_uz,
-            "name_ru": p.collection.name_ru,
-            "name_eng": p.collection.name_eng,
+    for d in details_all:
+        pid = int(d.product_id)
+        if pid not in product_ids_set:
+            continue
+        did = int(d.id)
+        details_by_product.setdefault(pid, []).append(did)
+        product_details[did] = {
+            "id": did,
+            "product_id": pid,
+            "name_uz": d.name_uz,
+            "name_ru": d.name_ru,
+            "name_eng": d.name_eng,
         }
 
-        item_ids = []
-        for item in p.product_items:
-            item_ids.append(int(item.id))
-            colors[item.color_id] = int(item.color_id)
-            sizes[item.size_id] = int(item.size_id)
-            product_items[item.id] = {
-                "id": int(item.id),
-                "product_id": int(item.product_id),
-                "color_id": int(item.color_id),
-                "size_id": int(item.size_id),
-                "total_count": int(item.total_count),
-            }
+    categories = {
+        int(c.id): {
+            "id": int(c.id),
+            "name_uz": c.name_uz,
+            "name_ru": c.name_ru,
+            "name_eng": c.name_eng,
+        }
+        for c in categories_all
+        if int(c.id) in category_ids_set
+    }
+    collections = {
+        int(c.id): {
+            "id": int(c.id),
+            "name_uz": c.name_uz,
+            "name_ru": c.name_ru,
+            "name_eng": c.name_eng,
+        }
+        for c in collections_all
+        if int(c.id) in collection_ids_set
+    }
+    color_entities = {
+        int(c.id): {
+            "id": int(c.id),
+            "name_uz": c.name_uz,
+            "name_ru": c.name_ru,
+            "name_eng": c.name_eng,
+        }
+        for c in colors_all
+        if int(c.id) in used_color_ids
+    }
+    size_entities = {
+        int(s.id): {
+            "id": int(s.id),
+            "name": s.name,
+        }
+        for s in sizes_all
+        if int(s.id) in used_size_ids
+    }
 
-        detail_ids = []
-        for d in p.product_details:
-            detail_ids.append(int(d.id))
-            product_details[d.id] = {
-                "id": int(d.id),
-                "product_id": int(d.product_id),
-                "name_uz": d.name_uz,
-                "name_ru": d.name_ru,
-                "name_eng": d.name_eng,
-            }
-
-        photo_ids = []
-        p_photos = p.product_photos if isinstance(p.product_photos, list) else ([p.product_photos] if p.product_photos else [])
-        for ph in p_photos:
-            photo_ids.append(int(ph.id))
-            product_photos[ph.id] = {
-                "id": int(ph.id),
-                "product_id": int(ph.product_id),
-                "photo": str(getattr(ph, "photo", "")),
-            }
-
-        products_entities[int(p.id)] = {
+    products_entities = {
+        int(p.id): {
             "id": int(p.id),
             "category_id": int(p.category_id),
             "collection_id": int(p.collection_id),
@@ -117,30 +160,11 @@ async def frontend_bootstrap_normalized(include_inactive: bool = False):
             "description_eng": p.description_eng,
             "is_active": bool(p.is_active),
             "price": int(p.price),
-            "item_ids": item_ids,
-            "photo_ids": photo_ids,
-            "detail_ids": detail_ids,
+            "item_ids": items_by_product.get(int(p.id), []),
+            "photo_ids": photos_by_product.get(int(p.id), []),
+            "detail_ids": details_by_product.get(int(p.id), []),
         }
-
-    color_rows = await Color.all()
-    size_rows = await Size.all()
-    color_entities = {
-        int(c.id): {
-            "id": int(c.id),
-            "name_uz": c.name_uz,
-            "name_ru": c.name_ru,
-            "name_eng": c.name_eng,
-        }
-        for c in color_rows
-        if int(c.id) in colors
-    }
-    size_entities = {
-        int(s.id): {
-            "id": int(s.id),
-            "name": s.name,
-        }
-        for s in size_rows
-        if int(s.id) in sizes
+        for p in products
     }
 
     return {
