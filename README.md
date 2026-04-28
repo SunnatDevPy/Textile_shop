@@ -77,7 +77,7 @@ Lokal:
 - `http://localhost:8000`
 
 Prod:
-- `https://api.sizningdomen.uz`
+- `https://textile.okach-admin.uz/`
 
 ## 2) Kontent turlari
 
