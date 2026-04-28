@@ -6,6 +6,7 @@ from sqlalchemy import update
 
 from models import Order, OrderItem, ProductItems
 from models.database import db
+from utils.audit import write_audit_log
 
 payments_router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -116,7 +117,15 @@ async def click_complete(payload: ClickCompletePayload):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Buyurtma Click to'lovi emas")
     if not payload.success:
         return {"ok": False, "order_id": order.id, "status": _status_value(order.status)}
-    return await _mark_order_as_paid(order)
+    result = await _mark_order_as_paid(order)
+    await write_audit_log(
+        entity="payment",
+        entity_id=order.id,
+        action="click_complete",
+        actor="click",
+        details=f"transaction_id={payload.transaction_id}",
+    )
+    return result
 
 
 @payments_router.post("/payme/check", summary="Payme: buyurtmani tekshirish")
@@ -138,4 +147,12 @@ async def payme_perform(payload: PaymePerformPayload):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Buyurtma Payme to'lovi emas")
     if not payload.success:
         return {"ok": False, "order_id": order.id, "status": _status_value(order.status)}
-    return await _mark_order_as_paid(order)
+    result = await _mark_order_as_paid(order)
+    await write_audit_log(
+        entity="payment",
+        entity_id=order.id,
+        action="payme_perform",
+        actor="payme",
+        details=f"transaction_id={payload.transaction_id}",
+    )
+    return result

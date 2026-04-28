@@ -1,155 +1,120 @@
-from typing import Optional, Annotated
+import os
+import tempfile
+from typing import Annotated
 
-import aiofiles
 import pandas as pd
-from fastapi import APIRouter, UploadFile, File
-from fastapi import Response
-from fastapi.params import Depends
-from pydantic import BaseModel
-from starlette import status
-from fast_routers.admin_auth import verify_admin_credentials
-from models import AdminUser, ShopProduct, ShopCategory, Shop, ProductTip
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
-excel_router = APIRouter(prefix='/excel', tags=['Excel'])
+from fast_routers.admin_auth import require_admin
+from models import AdminUser, Category, Collection, Product
+from utils.audit import write_audit_log
+
+excel_router = APIRouter(prefix="/excel", tags=["Excel"])
 
 
-class UserId(BaseModel):
-    id: Optional[int] = None
+@excel_router.post(
+    "/products/import",
+    summary="Excel orqali product create/update qilish (admin)",
+)
+async def import_products_from_excel(
+    user: Annotated[AdminUser, Depends(require_admin)],
+    excel_file: UploadFile = File(...),
+):
+    if not excel_file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Fayl topilmadi")
 
+    suffix = ".xlsx" if excel_file.filename.lower().endswith(".xlsx") else ".xls"
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp_path = tmp.name
+            tmp.write(await excel_file.read())
 
-@excel_router.post("/product", name="Create or Update Product")
-async def upload_excel(user: Annotated[AdminUser, Depends(verify_admin_credentials)], excel_file: UploadFile = File(...)):
-    if user is None:
-        return Response("Item not found", status.HTTP_404_NOT_FOUND)
+        df = pd.read_excel(tmp_path)
 
-    if user.status not in ['moderator', 'admin', 'superuser']:
-        return Response("Item not found", status.HTTP_404_NOT_FOUND)
-    file_path = f"temp_{user.id}.xlsx"
+        required_cols = {
+            "category_id",
+            "collection_id",
+            "name_uz",
+            "name_ru",
+            "name_eng",
+            "description_uz",
+            "description_ru",
+            "description_eng",
+            "price",
+            "is_active",
+        }
+        missing = required_cols - set(df.columns)
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Excelda ustunlar yetishmaydi: {', '.join(sorted(missing))}",
+            )
 
-    async with aiofiles.open(file_path, "wb") as f:
-        await f.write(await excel_file.read())
+        created = 0
+        updated = 0
+        errors = []
 
-    df = pd.read_excel(file_path)
+        for idx, row in df.iterrows():
+            try:
+                category_id = int(row["category_id"])
+                collection_id = int(row["collection_id"])
+                category = await Category.get_or_none(category_id)
+                collection = await Collection.get_or_none(collection_id)
+                if not category:
+                    raise ValueError(f"category_id topilmadi: {category_id}")
+                if not collection:
+                    raise ValueError(f"collection_id topilmadi: {collection_id}")
 
-    new_products = []
-    new_update = []
-
-    error = 0
-    errors_ids = []
-    for _, row in df.iterrows():
-        try:
-            category_id = row.get("category_id")
-            if category_id:
-                try:
-                    category = await ShopCategory.get(int(category_id))
-                except:
-                    category = None
-            else:
-                category = None
-
-            shop_id = row.get("shop_id")
-            if shop_id:
-                try:
-                    shop = await Shop.get(int(shop_id))
-                except:
-                    shop = None
-            else:
-                shop = None
-
-            if category and shop:  # Если есть category_id → это товар
-                product_data = {
-                    "category_id": category.id,
-                    "name_uz": row.get("name_uz"),
-                    "name_ru": row.get("name_ru"),
-                    "description_uz": row["description_uz"],
-                    "description_ru": row["description_ru"],
-                    "shop_id": shop.id,
-                    "price": row.get("price", 0),
-                    "volume": row.get("volume"),
-                    "unit": row.get("unit", ""),
+                payload = {
+                    "category_id": category_id,
+                    "collection_id": collection_id,
+                    "name_uz": str(row["name_uz"]).strip(),
+                    "name_ru": str(row["name_ru"]).strip(),
+                    "name_eng": str(row["name_eng"]).strip(),
+                    "description_uz": str(row["description_uz"]).strip(),
+                    "description_ru": str(row["description_ru"]).strip(),
+                    "description_eng": str(row["description_eng"]).strip(),
+                    "price": int(row["price"]),
+                    "is_active": bool(row["is_active"]),
                 }
 
-                existing_product: ShopProduct = await ShopProduct.get(int(row["id"]))
-                if existing_product:
-                    await ShopProduct.update(existing_product.id, **product_data)
-                    new_update.append(product_data)
+                product_id = row.get("id")
+                if pd.notna(product_id):
+                    existing = await Product.get_or_none(int(product_id))
                 else:
-                    product_data["id"] = int(row["id"])
-                    new_products.append(ShopProduct.create(**product_data))
+                    existing = None
 
-            else:
-                errors_ids.append(row)
-                error += 1
-
-        except Exception as e:
-            print(f"Ошибка при обработке строки {row['id']}: {e}")
-
-    return {
-        "message": "Fayl yuklandi",
-        "error": error,
-        "errors": errors_ids,
-        "new_product": new_products,
-        "update_product": new_update
-    }
-
-
-@excel_router.post(path='/tips', name="Create or Update Product tips")
-async def list_category_shop(user: Annotated[AdminUser, Depends(verify_admin_credentials)], excel_file: UploadFile = File()):
-    if user is None:
-        return Response("Item not found", status.HTTP_404_NOT_FOUND)
-
-    if user.status not in ['moderator', 'admin', 'superuser']:
-        return Response("Item not found", status.HTTP_404_NOT_FOUND)
-    file_path = f"temp_{user.id}.xlsx"
-
-    async with aiofiles.open(file_path, "wb") as f:
-        await f.write(await excel_file.read())
-
-    df = pd.read_excel(file_path)
-
-    new_product_tips = []
-    new_update = []
-
-    error = 0
-    errors_ids = []
-    for _, row in df.iterrows():
-        try:
-            product_id = row.get("product_id")
-            if product_id:
-                try:
-                    product = await ShopProduct.get(int(product_id))
-                except:
-                    product = None
-            else:
-                product = None
-
-            if product:
-                product_data = {
-                    "product_id": product.id,
-                    "price": row.get("price", 0),
-                    "volume": row.get("volume"),
-                    "unit": row.get("unit", ""),
-                }
-
-                existing_product: ProductTip = await ProductTip.get(int(row["id"]))
-                if existing_product:
-                    await ProductTip.update(existing_product.id, **product_data)
-                    new_update.append(product_data)
+                if existing:
+                    await Product.update(existing.id, **payload)
+                    updated += 1
+                    await write_audit_log(
+                        entity="product",
+                        entity_id=existing.id,
+                        action="excel_update",
+                        actor=user.username,
+                        details="Excel orqali yangilandi",
+                    )
                 else:
-                    product_data["id"] = int(row["id"])
-                    new_product_tips.append(ProductTip.create(**product_data))
+                    created_obj = await Product.create(**payload)
+                    created += 1
+                    await write_audit_log(
+                        entity="product",
+                        entity_id=created_obj.id,
+                        action="excel_create",
+                        actor=user.username,
+                        details="Excel orqali yaratildi",
+                    )
+            except Exception as exc:
+                errors.append({"row": int(idx) + 2, "error": str(exc)})
 
-            else:
-                errors_ids.append(row)
-                error += 1
-
-        except Exception as e:
-            print(f"Ошибка при обработке строки {row['id']}: {e}")
-
-    return {
-        "message": "Fayl yuklandi",
-        "error": error,
-        "errors": errors_ids,
-        "new_product": new_product_tips,
-        "update_product": new_update
-    }
+        return {
+            "ok": True,
+            "created": created,
+            "updated": updated,
+            "errors_count": len(errors),
+            "errors": errors[:100],
+        }
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)

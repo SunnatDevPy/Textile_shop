@@ -11,6 +11,7 @@ from starlette import status
 from fast_routers.admin_auth import verify_admin_credentials
 from models import AdminUser, Order, OrderItem, Product, ProductItems
 from models.database import db
+from utils.audit import write_audit_log
 
 order_router = APIRouter(prefix='/order', tags=['Orders'])
 
@@ -176,7 +177,7 @@ async def create_order(payload: CreateOrderPayload):
 @order_router.post('/{order_id}/confirm-payment', name='Confirm payment: status + stock', summary="To'lovni tasdiqlash va stockni kamaytirish (operator/admin)")
 async def confirm_payment(
     order_id: int,
-    _: StaffAuth,
+    user: StaffAuth,
     body: Optional[ConfirmPaymentPayload] = None,
 ):
     """
@@ -221,6 +222,13 @@ async def confirm_payment(
             .values(status=next_status)
         )
         await db.commit()
+        await write_audit_log(
+            entity="order",
+            entity_id=order_id,
+            action="confirm_payment",
+            actor=user.username,
+            details=f"status={next_status}",
+        )
     except HTTPException:
         raise
     except Exception:
@@ -236,7 +244,7 @@ async def confirm_payment(
 @order_router.patch('/{order_id}/status', name='Update order status (staff)', summary="Buyurtma statusini qo'lda yangilash (operator/admin)")
 async def update_order_status(
     order_id: int,
-    _: StaffAuth,
+    user: StaffAuth,
     new_status: str = Form(...),
 ):
     """Statusni qo'lda o'zgartirish (yetkazildi, bekor va hokazo). Ombor bilan bog'liq emas."""
@@ -265,6 +273,13 @@ async def update_order_status(
             await _deduct_stock_for_order(order_id)
 
         await Order.update(order_id, status=new_status)
+        await write_audit_log(
+            entity="order",
+            entity_id=order_id,
+            action="status_update",
+            actor=user.username,
+            details=f"new_status={new_status}",
+        )
     except DBAPIError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

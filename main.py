@@ -22,6 +22,8 @@ from fast_routers.system import system_router
 from fast_routers.frontend import frontend_router
 from fast_routers.admin_users import admin_user_router
 from fast_routers.payments import payments_router
+from fast_routers.excel_save import excel_router
+from fast_routers.history import history_router
 from models import db
 
 
@@ -42,6 +44,8 @@ async def lifespan(app: FastAPI):
     app.include_router(frontend_router)
     app.include_router(admin_user_router)
     app.include_router(payments_router)
+    app.include_router(excel_router)
+    app.include_router(history_router)
     await db.create_all()
     yield
 
@@ -54,6 +58,7 @@ app = FastAPI(
         "Autentifikatsiya: faqat Basic Auth (JWT ishlatilmaydi).\n"
         "Super admin operator/admin yaratadi, operator asosan buyurtma bilan ishlaydi.\n"
         "Click/Payme uchun callback endpointlar tayyorlangan.\n"
+        "Excel import, order/product history va loglar API mavjud.\n"
         "JWT endpointlari bu loyihada o'chirilgan."
     ),
     version="1.0.0",

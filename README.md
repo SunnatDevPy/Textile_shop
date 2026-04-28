@@ -18,6 +18,8 @@ Backend `FastAPI + PostgreSQL` asosida yozilgan va frontend bilan REST API orqal
 - Bannerlar (`banners`)
 - Buyurtmalar (`order`)
 - To'lov integratsiyasi (`/payments/...`) — Click va Payme callbacklari
+- Excel import (`/excel/products/import`) — product create/update
+- Tarix va loglar (`/history/...`) — product/order/log history
 - Operator/Admin boshqaruvi (`/panel/...`)
 - Frontend bootstrap (`/frontend/bootstrap`)
 - Tizim tekshiruv endpointlari (`/system/health`, `/system/ready`)
@@ -144,6 +146,33 @@ Eslatma:
 - Bu endpointlar callback/workflow uchun tayyorlangan.
 - Real prodga chiqishda Click/Payme imzo (signature) tekshiruvi qo'shilishi kerak.
 
+### Excel orqali product import/create
+
+- `POST /excel/products/import` (admin)
+- `multipart/form-data` orqali `.xlsx` yuboriladi
+- Kerakli ustunlar:
+  - `id` (ixtiyoriy, bo'lsa update qiladi)
+  - `category_id`
+  - `collection_id`
+  - `name_uz`, `name_ru`, `name_eng`
+  - `description_uz`, `description_ru`, `description_eng`
+  - `price`
+  - `is_active`
+
+Natija:
+- nechta `created`
+- nechta `updated`
+- xatolar ro'yxati (`row`, `error`)
+
+### Tarix API (history)
+
+- `GET /history/orders?date_from=...&date_to=...`
+  - buyurtmalar tarixi (sanadan-sanagacha)
+- `GET /history/products?date_from=...&date_to=...&action=...`
+  - product o'zgarish tarixi (audit log asosida)
+- `GET /history/logs?entity=...&date_from=...&date_to=...`
+  - tizim loglari tarixi
+
 ### Buyurtma statuslari
 
 - `yangi`
@@ -221,6 +250,21 @@ await fetch("http://localhost:8000/payments/click/complete", {
     transaction_id: "click_tx_001",
     success: true
   })
+});
+```
+
+### 5) Excel import misol
+
+```js
+const form = new FormData();
+form.append("excel_file", fileInput.files[0]);
+
+await fetch("https://textile.okach-admin.uz/excel/products/import", {
+  method: "POST",
+  headers: {
+    Authorization: `Basic ${basic}`,
+  },
+  body: form,
 });
 ```
 
