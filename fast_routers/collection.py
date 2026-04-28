@@ -9,6 +9,7 @@ from starlette import status
 
 from fast_routers.admin_auth import verify_admin_credentials
 from models import AdminUser, Category, Collection
+from utils.base_models_pydantic import ProductList
 
 collections_router = APIRouter(prefix='/collections', tags=['Collections'])
 
@@ -19,6 +20,9 @@ class ListCollectionModel(BaseModel):
     name_ru: str
     name_eng: str
     products: Optional[List['ProductList']] = None
+
+
+ListCollectionModel.model_rebuild()
 
 
 class UpdateOrCreateCollectionModel(BaseModel):

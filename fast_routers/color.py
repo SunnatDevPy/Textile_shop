@@ -9,6 +9,7 @@ from starlette import status
 
 from fast_routers.admin_auth import verify_admin_credentials
 from models import AdminUser, Category, Collection, Color
+from utils.base_models_pydantic import ProductList
 
 color_router = APIRouter(prefix='/color', tags=['Color'])
 
@@ -19,6 +20,9 @@ class ListColorModel(BaseModel):
     name_ru: str
     name_eng: str
     products: Optional[List['ProductList']] = None
+
+
+ListColorModel.model_rebuild()
 
 
 class UpdateOrCreateColorModel(BaseModel):
