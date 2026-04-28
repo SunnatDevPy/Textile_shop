@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="uz">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,68 +8,75 @@
 </head>
 <body>
   <header class="topbar">
-    <h1>Textile Admin Panel</h1>
+    <div>
+      <h1>Textile Shop Admin</h1>
+      <p class="subtitle">Barcha asosiy API boshqaruvi bitta panelda</p>
+    </div>
     <div class="auth-row">
-      <input id="baseUrl" placeholder="Base URL (default: current origin)" />
-      <input id="username" placeholder="Basic username" />
-      <input id="password" type="password" placeholder="Basic password / operator_code" />
-      <button id="saveAuthBtn">Save Auth</button>
-      <button id="checkMeBtn">Check /panel/me</button>
+      <input id="baseUrl" placeholder="Base URL (masalan: https://textile.okach-admin.uz)" />
+      <input id="username" placeholder="Username (admin/operator)" />
+      <input id="password" type="password" placeholder="Password / operator_code" />
+      <button id="saveAuthBtn" class="btn-primary">Saqlash</button>
+      <button id="checkMeBtn">Auth tekshirish</button>
     </div>
   </header>
 
   <main class="layout">
     <aside class="sidebar">
+      <div class="nav-group-title">Asosiy</div>
       <button class="tab-btn active" data-tab="dashboardTab">Dashboard</button>
-      <button class="tab-btn" data-tab="ordersTab">Orders</button>
-      <button class="tab-btn" data-tab="productsTab">Products</button>
-      <button class="tab-btn" data-tab="lookupsTab">Lookups</button>
-      <button class="tab-btn" data-tab="panelTab">Panel Users</button>
-      <button class="tab-btn" data-tab="historyTab">History</button>
-      <button class="tab-btn" data-tab="paymentsTab">Payments Test</button>
-      <button class="tab-btn" data-tab="excelTab">Excel</button>
+      <button class="tab-btn" data-tab="ordersTab">Buyurtmalar</button>
+      <button class="tab-btn" data-tab="productsTab">Mahsulotlar</button>
+      <button class="tab-btn" data-tab="lookupsTab">Kataloglar</button>
+      <div class="nav-group-title">Boshqaruv</div>
+      <button class="tab-btn" data-tab="panelTab">Admin / Operator</button>
+      <button class="tab-btn" data-tab="historyTab">Tarix va Analitika</button>
+      <button class="tab-btn" data-tab="paymentsTab">Payment test</button>
+      <button class="tab-btn" data-tab="excelTab">Excel import</button>
     </aside>
 
     <section class="content">
-      <div id="statusLine" class="status-line">Ready.</div>
+      <div id="statusLine" class="status-line">Tayyor. Avval yuqoridan auth ma'lumotlarini saqlang.</div>
 
       <div id="dashboardTab" class="tab active">
         <h2>Dashboard</h2>
+        <p class="help">Tizim holatini tekshiradi, KPI statistikani va frontend bootstrap ma'lumotlarini ko'rsatadi.</p>
         <div class="actions">
-          <button id="loadHealthBtn">Load Health + Ready</button>
-          <button id="loadDashBtn">Load Sales Dashboard</button>
-          <button id="loadBootstrapBtn">Load Frontend Bootstrap</button>
+          <button id="loadHealthBtn">Health + Ready</button>
+          <button id="loadDashBtn">Savdo KPI</button>
+          <button id="loadBootstrapBtn">Frontend Bootstrap</button>
         </div>
         <pre id="dashboardOut" class="output"></pre>
       </div>
 
       <div id="ordersTab" class="tab">
-        <h2>Orders</h2>
+        <h2>Buyurtmalar</h2>
+        <p class="help">Buyurtmalarni ko'rish, filtrlash, statusni o'zgartirish va to'lovni tasdiqlash uchun.</p>
         <div class="grid2">
           <div class="card">
-            <h3>List / Search</h3>
+            <h3>Ro'yxat va qidiruv</h3>
             <div class="actions">
-              <button id="listOrdersBtn">GET /order</button>
+              <button id="listOrdersBtn">Barcha buyurtmalar</button>
             </div>
             <form id="searchOrdersForm" class="form">
               <input name="order_id" placeholder="order_id" />
               <input name="status_q" placeholder="status_q (yangi, to'landi...)" />
               <input name="payment" placeholder="payment (click/payme/cash)" />
               <input name="contact" placeholder="contact" />
-              <button type="submit">GET /order/search</button>
+              <button type="submit">Qidirish</button>
             </form>
           </div>
           <div class="card">
-            <h3>Status Actions</h3>
+            <h3>Status amallari</h3>
             <form id="updateStatusForm" class="form">
               <input name="order_id" required placeholder="order_id" />
               <input name="new_status" required placeholder="new_status" />
-              <button type="submit">PATCH /order/{id}/status</button>
+              <button type="submit">Statusni yangilash</button>
             </form>
             <form id="confirmPaymentForm" class="form">
               <input name="order_id" required placeholder="order_id" />
               <input name="next_status" placeholder="next_status (optional)" />
-              <button type="submit">POST /order/{id}/confirm-payment</button>
+              <button type="submit">To'lovni tasdiqlash</button>
             </form>
           </div>
         </div>
@@ -77,20 +84,21 @@
       </div>
 
       <div id="productsTab" class="tab">
-        <h2>Products</h2>
+        <h2>Mahsulotlar</h2>
+        <p class="help">Mahsulotlar va subresurslar (item/detail/photo) bilan ishlash, yangi mahsulot yaratish.</p>
         <div class="grid2">
           <div class="card">
-            <h3>Read APIs</h3>
+            <h3>Ko'rish endpointlari</h3>
             <div class="actions">
-              <button id="listProductsBtn">GET /products</button>
-              <button id="searchProductsBtn">GET /products/search</button>
-              <button id="listItemsBtn">GET /product-items</button>
-              <button id="listDetailsBtn">GET /product-details</button>
-              <button id="listPhotosBtn">GET /product-photos</button>
+              <button id="listProductsBtn">Mahsulotlar</button>
+              <button id="searchProductsBtn">Search</button>
+              <button id="listItemsBtn">Product items</button>
+              <button id="listDetailsBtn">Product details</button>
+              <button id="listPhotosBtn">Product photos</button>
             </div>
           </div>
           <div class="card">
-            <h3>Create Product</h3>
+            <h3>Yangi mahsulot</h3>
             <form id="createProductForm" class="form">
               <input name="category_id" required placeholder="category_id" />
               <input name="collection_id" required placeholder="collection_id" />
@@ -102,7 +110,7 @@
               <input name="description_eng" required placeholder="description_eng" />
               <input name="price" required placeholder="price" />
               <input name="is_active" placeholder="is_active (true/false)" />
-              <button type="submit">POST /products</button>
+              <button type="submit">Mahsulot yaratish</button>
             </form>
           </div>
         </div>
@@ -110,19 +118,20 @@
       </div>
 
       <div id="lookupsTab" class="tab">
-        <h2>Lookups (Category / Collection / Color / Size)</h2>
+        <h2>Kataloglar (Category / Collection / Color / Size)</h2>
+        <p class="help">Katalog ma'lumotlarini ko'rish va yangi element qo'shish.</p>
         <div class="grid2">
           <div class="card">
-            <h3>List</h3>
+            <h3>Ro'yxat</h3>
             <div class="actions">
-              <button data-list="categories" class="lookup-list-btn">GET /categories</button>
-              <button data-list="collections" class="lookup-list-btn">GET /collections</button>
-              <button data-list="color" class="lookup-list-btn">GET /color</button>
-              <button data-list="size" class="lookup-list-btn">GET /size</button>
+              <button data-list="categories" class="lookup-list-btn">Categories</button>
+              <button data-list="collections" class="lookup-list-btn">Collections</button>
+              <button data-list="color" class="lookup-list-btn">Colors</button>
+              <button data-list="size" class="lookup-list-btn">Sizes</button>
             </div>
           </div>
           <div class="card">
-            <h3>Create</h3>
+            <h3>Yaratish</h3>
             <form id="createLookupForm" class="form">
               <select name="type">
                 <option value="categories">categories</option>
@@ -134,7 +143,7 @@
               <input name="name_ru" placeholder="name_ru" />
               <input name="name_eng" placeholder="name_eng" />
               <input name="name" placeholder="name (size uchun)" />
-              <button type="submit">POST selected lookup</button>
+              <button type="submit">Tanlangan katalogga qo'shish</button>
             </form>
           </div>
         </div>
@@ -142,17 +151,18 @@
       </div>
 
       <div id="panelTab" class="tab">
-        <h2>Panel Users</h2>
+        <h2>Admin / Operator boshqaruvi</h2>
+        <p class="help">Foydalanuvchilar ro'yxati va super admin orqali operator/admin yaratish.</p>
         <div class="grid2">
           <div class="card">
-            <h3>Users</h3>
+            <h3>Foydalanuvchilar</h3>
             <div class="actions">
-              <button id="listUsersBtn">GET /panel/users</button>
-              <button id="meBtn">GET /panel/me</button>
+              <button id="listUsersBtn">Barchasi</button>
+              <button id="meBtn">Mening profilim</button>
             </div>
           </div>
           <div class="card">
-            <h3>Create Operator/Admin (super admin)</h3>
+            <h3>Operator/Admin yaratish (super admin)</h3>
             <form id="createOperatorForm" class="form">
               <input name="username" required placeholder="username" />
               <input name="operator_code" required placeholder="operator_code" />
@@ -164,7 +174,7 @@
                 <option value="true">true</option>
                 <option value="false">false</option>
               </select>
-              <button type="submit">POST /panel/operators</button>
+              <button type="submit">Foydalanuvchi yaratish</button>
             </form>
           </div>
         </div>
@@ -172,25 +182,27 @@
       </div>
 
       <div id="historyTab" class="tab">
-        <h2>History</h2>
+        <h2>Tarix va analitika</h2>
+        <p class="help">Order/product loglar va savdo statistikalarini olish uchun.</p>
         <div class="actions">
-          <button id="historyOrdersBtn">GET /history/orders</button>
-          <button id="historyProductsBtn">GET /history/products</button>
-          <button id="historyLogsBtn">GET /history/logs</button>
-          <button id="historySalesBtn">GET /history/stats/sales</button>
-          <button id="historyDashBtn">GET /history/stats/dashboard</button>
+          <button id="historyOrdersBtn">Order history</button>
+          <button id="historyProductsBtn">Product history</button>
+          <button id="historyLogsBtn">System logs</button>
+          <button id="historySalesBtn">Sales stats</button>
+          <button id="historyDashBtn">Dashboard stats</button>
         </div>
         <pre id="historyOut" class="output"></pre>
       </div>
 
       <div id="paymentsTab" class="tab">
         <h2>Payments Test</h2>
+        <p class="help">Click/Payme callback endpointlarini qo'lda test qilish uchun texnik bo'lim.</p>
         <div class="grid2">
           <div class="card">
             <h3>Click</h3>
             <form id="clickPrepareForm" class="form">
               <input name="order_id" required placeholder="order_id" />
-              <button type="submit">POST /payments/click/prepare</button>
+              <button type="submit">Prepare yuborish</button>
             </form>
             <form id="clickCompleteForm" class="form">
               <input name="order_id" required placeholder="order_id" />
@@ -199,14 +211,14 @@
                 <option value="true">true</option>
                 <option value="false">false</option>
               </select>
-              <button type="submit">POST /payments/click/complete</button>
+              <button type="submit">Complete yuborish</button>
             </form>
           </div>
           <div class="card">
             <h3>Payme</h3>
             <form id="paymeCheckForm" class="form">
               <input name="order_id" required placeholder="order_id" />
-              <button type="submit">POST /payments/payme/check</button>
+              <button type="submit">Check yuborish</button>
             </form>
             <form id="paymePerformForm" class="form">
               <input name="order_id" required placeholder="order_id" />
@@ -215,7 +227,7 @@
                 <option value="true">true</option>
                 <option value="false">false</option>
               </select>
-              <button type="submit">POST /payments/payme/perform</button>
+              <button type="submit">Perform yuborish</button>
             </form>
           </div>
         </div>
@@ -224,16 +236,17 @@
 
       <div id="excelTab" class="tab">
         <h2>Excel</h2>
+        <p class="help">Product import uchun shablon yuklash va excel faylni yuklab import qilish.</p>
         <div class="grid2">
           <div class="card">
             <h3>Template</h3>
-            <button id="downloadTemplateBtn">GET /excel/products/template</button>
+            <button id="downloadTemplateBtn">Shablonni yuklash</button>
           </div>
           <div class="card">
             <h3>Import</h3>
             <form id="excelImportForm" class="form">
               <input type="file" name="excel_file" required />
-              <button type="submit">POST /excel/products/import</button>
+              <button type="submit">Excel import qilish</button>
             </form>
           </div>
         </div>

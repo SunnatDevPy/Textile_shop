@@ -29,7 +29,7 @@ class UpdateOrCreateSizeModel(BaseModel):
         return cls(name=name)
 
 
-@size_router.get(path='/', name="Size", summary="O'lchamlar ro'yxati")
+@size_router.get(path='', name="Size", summary="O'lchamlar ro'yxati")
 async def list_size():
     return await Size.all()
 
@@ -42,7 +42,7 @@ async def size_get_one(size_id: int):
     return size_row
 
 
-@size_router.post(path="/", name="Create Size", summary="O'lcham yaratish (admin)")
+@size_router.post(path="", name="Create Size", summary="O'lcham yaratish (admin)")
 async def create_size(
         _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[UpdateOrCreateSizeModel, Depends(UpdateOrCreateSizeModel.as_form)]

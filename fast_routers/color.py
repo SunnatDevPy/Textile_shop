@@ -40,7 +40,7 @@ class UpdateOrCreateColorModel(BaseModel):
         return cls(name_uz=name_uz, name_ru=name_ru, name_eng=name_eng)
 
 
-@color_router.get(path='/', name="Color", summary="Ranglar ro'yxati")
+@color_router.get(path='', name="Color", summary="Ranglar ro'yxati")
 async def list_color():
     return await Color.all()
 
@@ -51,7 +51,7 @@ async def color_get_one(color_id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Color not found")
     return color
 
-@color_router.post(path="/", name="Create Color", summary="Rang yaratish (admin)")
+@color_router.post(path="", name="Create Color", summary="Rang yaratish (admin)")
 async def create_color(
         _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[UpdateOrCreateColorModel, Depends(UpdateOrCreateColorModel.as_form)]

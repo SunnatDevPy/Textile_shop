@@ -7,7 +7,7 @@ const state = {
 const statusLine = document.getElementById("statusLine");
 
 function setStatus(text, isError = false) {
-  statusLine.textContent = text;
+  statusLine.textContent = isError ? `Xato: ${text}` : `OK: ${text}`;
   statusLine.style.borderColor = isError ? "#ef4444" : "#334155";
 }
 
@@ -45,6 +45,7 @@ async function api(path, options = {}) {
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}: ${typeof body === "string" ? body : pretty(body)}`);
   }
+  setStatus(`${path} muvaffaqiyatli bajarildi.`);
   return body;
 }
 

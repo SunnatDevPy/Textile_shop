@@ -11,13 +11,13 @@ main_photos_router = APIRouter(prefix='/banners', tags=['Banners'])
 AdminOnlyAuth = Annotated[AdminUser, Depends(require_admin)]
 
 
-@main_photos_router.get(path="/", name="All banner photos", summary="Bannerlar ro'yxati")
+@main_photos_router.get(path="", name="All banner photos", summary="Bannerlar ro'yxati")
 async def list_banner_photos():
     photos = await MainPhoto.all()
     return {"photos": photos}
 
 
-@main_photos_router.post("/", name="Create Photo", summary="Banner rasmi qo'shish (admin)")
+@main_photos_router.post("", name="Create Photo", summary="Banner rasmi qo'shish (admin)")
 async def create_banner_photo(
         _: AdminOnlyAuth,
         photo: UploadFile = File(...),

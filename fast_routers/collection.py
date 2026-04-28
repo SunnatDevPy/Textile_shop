@@ -40,7 +40,7 @@ class UpdateOrCreateCollectionModel(BaseModel):
         return cls(name_uz=name_uz, name_ru=name_ru, name_eng=name_eng)
 
 
-@collections_router.get(path='/', name="Collections", summary="Kolleksiyalar ro'yxati")
+@collections_router.get(path='', name="Collections", summary="Kolleksiyalar ro'yxati")
 async def list_collection():
     return await Collection.all()
 
@@ -51,7 +51,7 @@ async def collection_get_one(collection_id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
     return collection
 
-@collections_router.post(path="/", name="Create Collections", summary="Kolleksiya yaratish (admin)")
+@collections_router.post(path="", name="Create Collections", summary="Kolleksiya yaratish (admin)")
 async def create_collection(
         _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[UpdateOrCreateCollectionModel, Depends(UpdateOrCreateCollectionModel.as_form)]

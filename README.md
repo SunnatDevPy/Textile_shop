@@ -452,7 +452,7 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 
 ## 4.8 Collections API (`/collections`)
 
-### `GET /collections/` (Public)
+### `GET /collections` (Public)
 - Vazifa: kolleksiyalar ro'yxati.
 - Qaytadi: `Collection[]`.
 
@@ -460,7 +460,7 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 - Vazifa: bitta kolleksiya.
 - Qaytadi: `Collection`.
 
-### `POST /collections/` (Admin)
+### `POST /collections` (Admin)
 - Vazifa: kolleksiya yaratish.
 - Content-Type: `multipart/form-data`
 - Yuboriladi:
@@ -482,7 +482,7 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 
 ## 4.9 Color API (`/color`)
 
-### `GET /color/` (Public)
+### `GET /color` (Public)
 - Vazifa: ranglar ro'yxati.
 - Qaytadi: `Color[]`.
 
@@ -490,7 +490,7 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 - Vazifa: bitta rang.
 - Qaytadi: `Color`.
 
-### `POST /color/` (Admin)
+### `POST /color` (Admin)
 - Vazifa: rang yaratish.
 - Content-Type: `multipart/form-data`
 - Yuboriladi:
@@ -512,7 +512,7 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 
 ## 4.10 Size API (`/size`)
 
-### `GET /size/` (Public)
+### `GET /size` (Public)
 - Vazifa: o'lchamlar ro'yxati.
 - Qaytadi: `Size[]`.
 
@@ -520,7 +520,7 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 - Vazifa: bitta o'lcham.
 - Qaytadi: `Size`.
 
-### `POST /size/` (Admin)
+### `POST /size` (Admin)
 - Vazifa: o'lcham yaratish.
 - Content-Type: `multipart/form-data`
 - Yuboriladi:
@@ -542,14 +542,14 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 
 ## 4.11 Banners API (`/banners`)
 
-### `GET /banners/` (Public)
+### `GET /banners` (Public)
 - Vazifa: bannerlar ro'yxati.
 - Qaytadi:
 ```json
 { "photos": [] }
 ```
 
-### `POST /banners/` (Admin)
+### `POST /banners` (Admin)
 - Vazifa: banner rasmi qo'shish.
 - Content-Type: `multipart/form-data`
 - Yuboriladi:
