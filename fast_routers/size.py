@@ -30,7 +30,7 @@ class UpdateOrCreateSizeModel(BaseModel):
 
 
 @size_router.get(path='/', name="Size", summary="O'lchamlar ro'yxati")
-async def list_size() -> list[ListSizeModel]:
+async def list_size():
     return await Size.all()
 
 

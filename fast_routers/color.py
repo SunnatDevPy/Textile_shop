@@ -41,7 +41,7 @@ class UpdateOrCreateColorModel(BaseModel):
 
 
 @color_router.get(path='/', name="Color", summary="Ranglar ro'yxati")
-async def list_color() -> list[ListColorModel]:
+async def list_color():
     return await Color.all()
 
 @color_router.get(path='/{color_id}', name="Collections Get One", summary="Bitta rangni olish")

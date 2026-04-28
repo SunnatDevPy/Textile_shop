@@ -41,7 +41,7 @@ class UpdateOrCreateCollectionModel(BaseModel):
 
 
 @collections_router.get(path='/', name="Collections", summary="Kolleksiyalar ro'yxati")
-async def list_collection() -> list[ListCollectionModel]:
+async def list_collection():
     return await Collection.all()
 
 @collections_router.get(path='/{collection_id}', name="Collections Get One", summary="Bitta kolleksiyani olish")
