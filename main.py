@@ -19,6 +19,7 @@ from fast_routers.collection import collections_router
 from fast_routers.color import color_router
 from fast_routers.size import size_router
 from fast_routers.system import system_router
+from fast_routers.frontend import frontend_router
 from models import db
 
 
@@ -36,6 +37,7 @@ async def lifespan(app: FastAPI):
     app.include_router(color_router)
     app.include_router(size_router)
     app.include_router(system_router)
+    app.include_router(frontend_router)
     await db.create_all()
     yield
 
