@@ -1,11 +1,13 @@
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy import and_, select
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
 from fast_routers.admin_auth import require_admin
 from models import AdminUser, Category, Collection, Product, ProductPhoto
+from models.database import db
 
 shop_product_router = APIRouter(prefix='/products', tags=['Products'])
 
@@ -37,6 +39,46 @@ async def search_products(
     else:
         products = await Product.all()
     return {'products': products}
+
+
+@shop_product_router.get(
+    '/search/advanced',
+    name='Advanced product search',
+    summary="Mahsulotlarni kengaytirilgan filter bilan qidirish",
+)
+async def search_products_advanced(
+    search: Optional[str] = None,
+    category_id: Optional[int] = None,
+    collection_id: Optional[int] = None,
+    is_active: Optional[bool] = None,
+    min_price: Optional[int] = None,
+    max_price: Optional[int] = None,
+    limit: int = 100,
+):
+    query = select(Product)
+    criteria = []
+
+    if search:
+        s = f"%{search}%"
+        criteria.append(
+            (Product.name_uz.ilike(s)) | (Product.name_ru.ilike(s)) | (Product.name_eng.ilike(s))
+        )
+    if category_id is not None:
+        criteria.append(Product.category_id == category_id)
+    if collection_id is not None:
+        criteria.append(Product.collection_id == collection_id)
+    if is_active is not None:
+        criteria.append(Product.is_active == is_active)
+    if min_price is not None:
+        criteria.append(Product.price >= min_price)
+    if max_price is not None:
+        criteria.append(Product.price <= max_price)
+    if criteria:
+        query = query.where(and_(*criteria))
+
+    query = query.limit(max(1, min(limit, 500)))
+    products = (await db.execute(query)).scalars().all()
+    return {"products": products, "count": len(products)}
 
 
 @shop_product_router.get('/category/{category_id}', name='Products by category', summary="Kategoriya bo'yicha mahsulotlar")

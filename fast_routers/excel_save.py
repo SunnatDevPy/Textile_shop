@@ -1,15 +1,52 @@
 import os
 import tempfile
+from io import BytesIO
 from typing import Annotated
 
 import pandas as pd
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 
 from fast_routers.admin_auth import require_admin
 from models import AdminUser, Category, Collection, Product
 from utils.audit import write_audit_log
 
 excel_router = APIRouter(prefix="/excel", tags=["Excel"])
+
+
+@excel_router.get(
+    "/products/template",
+    summary="Product import uchun Excel shablonini yuklab olish",
+)
+async def download_products_import_template(
+    _: Annotated[AdminUser, Depends(require_admin)],
+):
+    df = pd.DataFrame(
+        [
+            {
+                "id": "",
+                "category_id": 1,
+                "collection_id": 1,
+                "name_uz": "Mahsulot nomi UZ",
+                "name_ru": "Название RU",
+                "name_eng": "Product name EN",
+                "description_uz": "Tavsif UZ",
+                "description_ru": "Описание RU",
+                "description_eng": "Description EN",
+                "price": 100000,
+                "is_active": True,
+            }
+        ]
+    )
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="products")
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=products_import_template.xlsx"},
+    )
 
 
 @excel_router.post(

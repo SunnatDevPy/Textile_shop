@@ -1,10 +1,11 @@
 """Заказы: позиции с product_id + product_item_id + count; после оплаты — статус и списание остатков."""
 
+from datetime import datetime
 from typing import Annotated, Optional, Union
 
 from fastapi import APIRouter, Depends, Form, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select, update
+from sqlalchemy import and_, desc, select, update
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
@@ -82,6 +83,56 @@ class ConfirmPaymentPayload(BaseModel):
 @order_router.get('', name='Orders list', summary="Buyurtmalar ro'yxati (operator/admin)")
 async def list_orders(_: StaffAuth):
     return await Order.all()
+
+
+@order_router.get(
+    '/search',
+    name='Orders search',
+    summary="Buyurtmalarni qidirish (operator/admin)",
+)
+async def search_orders(
+    _: StaffAuth,
+    order_id: Optional[int] = None,
+    status_q: Optional[str] = None,
+    payment: Optional[str] = None,
+    contact: Optional[str] = None,
+    first_name: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    limit: int = 200,
+):
+    query = select(Order).order_by(desc(Order.created_at))
+    criteria = []
+    if order_id is not None:
+        criteria.append(Order.id == order_id)
+    if status_q:
+        criteria.append(Order.status == status_q)
+    if payment:
+        criteria.append(Order.payment == payment)
+    if contact:
+        criteria.append(Order.contact.ilike(f"%{contact}%"))
+    if first_name:
+        criteria.append(Order.first_name.ilike(f"%{first_name}%"))
+
+    if date_from:
+        try:
+            from_dt = datetime.fromisoformat(date_from)
+            criteria.append(Order.created_at >= from_dt)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="date_from ISO formatda bo'lishi kerak")
+    if date_to:
+        try:
+            to_dt = datetime.fromisoformat(date_to)
+            criteria.append(Order.created_at <= to_dt)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="date_to ISO formatda bo'lishi kerak")
+
+    if criteria:
+        query = query.where(and_(*criteria))
+    query = query.limit(max(1, min(limit, 1000)))
+
+    orders = (await db.execute(query)).scalars().all()
+    return {"orders": orders, "count": len(orders)}
 
 
 @order_router.get('/{order_id}', name='Order detail', summary="Bitta buyurtma tafsiloti (operator/admin)")

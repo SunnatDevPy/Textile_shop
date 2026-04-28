@@ -116,6 +116,7 @@ Loyihada **faqat HTTP Basic Auth** bor (JWT o'chirilgan).
 - `GET /products` - barcha mahsulotlar
 - `GET /products/{product_id}` - bitta mahsulot
 - `GET /products/search?search=...&category_id=...` - qidiruv/filter
+- `GET /products/search/advanced?...` - kengaytirilgan qidiruv/filter (`collection_id`, `is_active`, `min_price`, `max_price`)
 - `GET /products/category/{category_id}` - kategoriya bo'yicha
 - `GET /banners/` - bannerlar
 - `GET /categories` - kategoriyalar
@@ -131,6 +132,7 @@ Loyihada **faqat HTTP Basic Auth** bor (JWT o'chirilgan).
 
 - `POST /order` - buyurtma yaratish (JSON)
 - `GET /order` - buyurtmalar ro'yxati (operator/admin)
+- `GET /order/search?...` - buyurtma qidirish (`status`, `payment`, `contact`, `date_from`, `date_to`)
 - `GET /order/{order_id}` - buyurtma detali (operator/admin)
 - `POST /order/{order_id}/confirm-payment` - to'lov tasdig'i va stock kamaytirish (operator/admin)
 - `PATCH /order/{order_id}/status` - status o'zgartirish (operator/admin)
@@ -148,6 +150,8 @@ Eslatma:
 
 ### Excel orqali product import/create
 
+- `GET /excel/products/template` (admin)
+  - excel import uchun tayyor shablon faylni yuklab beradi
 - `POST /excel/products/import` (admin)
 - `multipart/form-data` orqali `.xlsx` yuboriladi
 - Kerakli ustunlar:
