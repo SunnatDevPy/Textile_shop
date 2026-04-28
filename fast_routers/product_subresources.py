@@ -110,10 +110,17 @@ async def delete_product_photo(photo_id: int, _: AdminOnlyAuth):
 # --- ProductItems ---
 
 
-@product_items_router.get('', name='List product items', summary="Mahsulot variantlari ro'yxati")
-async def list_product_items(product_id: Optional[int] = None):
-    if product_id is None:
-        return await ProductItems.all()
+@product_items_router.get('', name='List product items', summary="Barcha mahsulot variantlari ro'yxati")
+async def list_product_items():
+    return await ProductItems.all()
+
+
+@product_items_router.get(
+    '/product/{product_id}',
+    name='List product items by product',
+    summary="Bitta mahsulotga tegishli variantlar ro'yxati",
+)
+async def list_product_items_by_product(product_id: int):
     return await ProductItems.get_product_items(product_id)
 
 
@@ -211,10 +218,17 @@ async def delete_product_item(item_id: int, _: AdminOnlyAuth):
 # --- ProductDetail ---
 
 
-@product_detail_router.get('', name='List product details', summary="Mahsulot tafsilotlari ro'yxati")
-async def list_product_details(product_id: Optional[int] = None):
-    if product_id is None:
-        return await ProductDetail.all()
+@product_detail_router.get('', name='List product details', summary="Barcha mahsulot tafsilotlari ro'yxati")
+async def list_product_details():
+    return await ProductDetail.all()
+
+
+@product_detail_router.get(
+    '/product/{product_id}',
+    name='List product details by product',
+    summary="Bitta mahsulotga tegishli tafsilotlar ro'yxati",
+)
+async def list_product_details_by_product(product_id: int):
     q = select(ProductDetail).where(ProductDetail.product_id == product_id)
     return list((await db.execute(q)).scalars().all())
 
