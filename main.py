@@ -15,6 +15,10 @@ from fast_routers.product_subresources import (
 from fast_routers.main_photos import main_photos_router
 from fast_routers.jwt_ import jwt_router
 from fast_routers.orders import order_router
+from fast_routers.category import categories_router
+from fast_routers.collection import collections_router
+from fast_routers.color import color_router
+from fast_routers.size import size_router
 from models import db
 
 
@@ -28,6 +32,10 @@ async def lifespan(app: FastAPI):
     app.include_router(main_photos_router)
     app.include_router(order_router)
     app.include_router(jwt_router)
+    app.include_router(categories_router)
+    app.include_router(collections_router)
+    app.include_router(color_router)
+    app.include_router(size_router)
     await db.create_all()
     yield
 
