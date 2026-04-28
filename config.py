@@ -28,18 +28,12 @@ class DatabaseConfig(BaseConfig):
         return f"postgresql+asyncpg://{self.USER}:{self.PASS}@{self.HOST}:{self.PORT}/{self.NAME}"
 
 @dataclass
-class BOT(BaseConfig):
-    BOT_TOKEN = os.getenv('BOT_TOKEN')
-    ADMIN = os.getenv('ADMIN')
-
-@dataclass
 class Configuration:
     """All in one configuration's class"""
     db = DatabaseConfig()
     SECRET_KEY: str = os.getenv('SECRET_KEY')
     ADMIN_PASS: str = os.getenv('ADMIN_PASS')
     ADMIN_USERNAME: str = os.getenv('ADMIN_USERNAME')
-    bot = BOT()
 
 # class CustomFileSystemStorage(FileSystemStorage):
 #

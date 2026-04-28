@@ -1,18 +1,16 @@
-# Textile Shop (FastAPI + Telegram Bot)
+# Textile Shop (FastAPI)
 
-Бэкенд интернет-магазина на `FastAPI` с `PostgreSQL` и Telegram-ботом (`aiogram`).
+Бэкенд интернет-магазина на `FastAPI` с `PostgreSQL`.
 
 ## Что есть в проекте
 
 - API на `FastAPI` (документация: `/docs`)
 - База данных `PostgreSQL`
-- Telegram-бот (режим polling)
 - Docker-окружение через `docker-compose`
 
 ## Структура сервисов в Docker
 
 - `app` — FastAPI приложение (`uvicorn`, порт `8000`)
-- `bot` — Telegram-бот (`python bot.py`)
 - `db` — PostgreSQL (`5432` внутри сети docker, наружу проброшен `5431`)
 
 ## Переменные окружения
@@ -27,7 +25,6 @@
 - `DB_HOST`
 - `DB_PORT`
 - `SECRET_KEY`
-- `BOT_TOKEN`
 - `ADMIN`, `ADMIN_USERNAME`, `ADMIN_PASS`
 
 Пример для Docker Compose:
@@ -39,7 +36,6 @@ DB_PASS=1
 DB_HOST=db
 DB_PORT=5432
 SECRET_KEY=change_me_to_long_random_secret
-BOT_TOKEN=your_telegram_bot_token
 ADMIN=123456789
 ADMIN_USERNAME=admin
 ADMIN_PASS=hashed_password
@@ -58,7 +54,6 @@ docker compose up -d --build
 ```bash
 docker compose ps
 docker compose logs -f app
-docker compose logs -f bot
 ```
 
 API Docs:
@@ -88,7 +83,7 @@ docker compose down -v
 docker compose up -d --build
 ```
 
-5. Проверить логи `app` и `bot`
+5. Проверить логи `app`
 
 Подробный чеклист: `DEPLOY_CHECKLIST.md`
 
@@ -100,11 +95,6 @@ docker compose up -d --build
 4. Обновить CORS в `main.py`:
    - заменить `allow_origins=["*"]` на список своих доменов
 5. Перевести frontend API URL на HTTPS-домен
-
-## Важно по Telegram-боту
-
-- Сейчас бот работает через polling, домен ему не обязателен
-- Для webhook потребуется HTTPS-домен и настройка endpoint
 
 ## Безопасность
 
@@ -120,14 +110,8 @@ docker compose up -d --build
 docker compose up -d --build
 ```
 
-Рестарт только бота:
+Рестарт API:
 
 ```bash
-docker compose restart bot
-```
-
-Просмотр логов бота:
-
-```bash
-docker compose logs -f bot
+docker compose restart app
 ```

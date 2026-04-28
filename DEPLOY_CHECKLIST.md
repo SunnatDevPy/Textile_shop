@@ -19,7 +19,6 @@ Change these values:
 - [ ] `DB_USER=<your_prod_db_user>`
 - [ ] `DB_PASS=<your_prod_db_password>`
 - [ ] `SECRET_KEY=<long_random_secret>`
-- [ ] `BOT_TOKEN=<your_real_bot_token_if_used>`
 
 Important:
 - [ ] Do not commit real secrets to git
@@ -38,7 +37,6 @@ Check:
 ```bash
 docker compose ps
 docker compose logs -f app
-docker compose logs -f bot
 ```
 
 ## 4) Domain setup (when moving from IP to domain)
@@ -92,24 +90,6 @@ docker exec -t textile_db pg_dump -U postgres textile > backup_$(date +%F).sql
 - [ ] `https://api.yourdomain.com/docs` opens
 - [ ] Main API endpoints return `200`
 - [ ] File uploads work (`/media`)
-- [ ] Bot/webhook integrations (if used) are reachable via HTTPS
-- [ ] Telegram bot responds to `/start`
-
-## 9) Telegram bot reminders
-
-- [ ] Keep `BOT_TOKEN` only in server `.env`
-- [ ] Run bot in separate service (`bot`) via docker-compose
-- [ ] Check bot logs after deploy:
-
-```bash
-docker compose logs -f bot
-```
-
-If you use polling (current project), domain is not required for bot to work.  
-If you switch to webhook in future:
-- [ ] Add HTTPS domain for webhook URL
-- [ ] Configure webhook endpoint in FastAPI/Nginx
-- [ ] Open and secure `443` port
 
 ---
 
