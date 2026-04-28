@@ -20,21 +20,92 @@ frontend_router = APIRouter(prefix="/frontend", tags=["Frontend"])
     summary="Frontend uchun barcha asosiy ma'lumotlar",
 )
 async def frontend_bootstrap(include_inactive: bool = False):
-    products = await Product.all()
-    if not include_inactive:
-        products = [p for p in products if bool(getattr(p, "is_active", False))]
+    products_all = await Product.all()
+    products = products_all if include_inactive else [p for p in products_all if bool(getattr(p, "is_active", False))]
+    product_ids_set = {int(p.id) for p in products}
+    category_ids_set = {int(p.category_id) for p in products}
+    collection_ids_set = {int(p.collection_id) for p in products}
+
+    categories = [
+        {
+            "id": int(c.id),
+            "name_uz": c.name_uz,
+            "name_ru": c.name_ru,
+            "name_eng": c.name_eng,
+        }
+        for c in await Category.all()
+        if int(c.id) in category_ids_set
+    ]
+    collections = [
+        {
+            "id": int(c.id),
+            "name_uz": c.name_uz,
+            "name_ru": c.name_ru,
+            "name_eng": c.name_eng,
+        }
+        for c in await Collection.all()
+        if int(c.id) in collection_ids_set
+    ]
+
+    product_items = [
+        {
+            "id": int(i.id),
+            "product_id": int(i.product_id),
+            "color_id": int(i.color_id),
+            "size_id": int(i.size_id),
+            "total_count": int(i.total_count),
+        }
+        for i in await ProductItems.all()
+        if int(i.product_id) in product_ids_set
+    ]
+    product_photos = [
+        {
+            "id": int(ph.id),
+            "product_id": int(ph.product_id),
+            "photo": str(getattr(ph, "photo", "")),
+        }
+        for ph in await ProductPhoto.all()
+        if int(ph.product_id) in product_ids_set
+    ]
+    product_details = [
+        {
+            "id": int(d.id),
+            "product_id": int(d.product_id),
+            "name_uz": d.name_uz,
+            "name_ru": d.name_ru,
+            "name_eng": d.name_eng,
+        }
+        for d in await ProductDetail.all()
+        if int(d.product_id) in product_ids_set
+    ]
+    products_payload = [
+        {
+            "id": int(p.id),
+            "category_id": int(p.category_id),
+            "collection_id": int(p.collection_id),
+            "name_uz": p.name_uz,
+            "name_ru": p.name_ru,
+            "name_eng": p.name_eng,
+            "description_uz": p.description_uz,
+            "description_ru": p.description_ru,
+            "description_eng": p.description_eng,
+            "is_active": bool(p.is_active),
+            "price": int(p.price),
+        }
+        for p in products
+    ]
 
     return {
         "ok": True,
         "banners": await MainPhoto.all(),
-        "categories": await Category.all(),
-        "collections": await Collection.all(),
+        "categories": categories,
+        "collections": collections,
         "colors": await Color.all(),
         "sizes": await Size.all(),
-        "products": products,
-        "product_items": await ProductItems.all(),
-        "product_photos": await ProductPhoto.all(),
-        "product_details": await ProductDetail.all(),
+        "products": products_payload,
+        "product_items": product_items,
+        "product_photos": product_photos,
+        "product_details": product_details,
     }
 
 

@@ -24,14 +24,18 @@ def _require_image_upload(photo: UploadFile) -> None:
 
 
 @shop_product_router.get('', name='Get all products', summary="Barcha mahsulotlar ro'yxati")
-async def get_all_products():
-    return await Product.all()
+async def get_all_products(include_inactive: bool = False):
+    products = await Product.all()
+    if not include_inactive:
+        products = [p for p in products if bool(getattr(p, "is_active", False))]
+    return products
 
 
 @shop_product_router.get('/search', name='Search products', summary="Mahsulot qidirish (nom/kategoriya)")
 async def search_products(
     search: Optional[str] = None,
     category_id: Optional[int] = None,
+    include_inactive: bool = False,
 ):
     if search:
         products = await Product.search(search, category_id)
@@ -39,6 +43,8 @@ async def search_products(
         products = await Product.get_products_category(category_id)
     else:
         products = await Product.all()
+    if not include_inactive:
+        products = [p for p in products if bool(getattr(p, "is_active", False))]
     return ok_response(products, meta={"count": len(products)})
 
 
@@ -83,8 +89,11 @@ async def search_products_advanced(
 
 
 @shop_product_router.get('/category/{category_id}', name='Products by category', summary="Kategoriya bo'yicha mahsulotlar")
-async def list_products_by_category(category_id: int):
-    return await Product.get_products_category(category_id)
+async def list_products_by_category(category_id: int, include_inactive: bool = False):
+    products = await Product.get_products_category(category_id)
+    if not include_inactive:
+        products = [p for p in products if bool(getattr(p, "is_active", False))]
+    return products
 
 
 @shop_product_router.get('/{product_id}', name='Get product', summary="Bitta mahsulotni olish")

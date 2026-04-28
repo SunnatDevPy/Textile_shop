@@ -231,7 +231,8 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 
 ### `GET /products` (Public)
 - Vazifa: barcha mahsulotlar ro'yxati.
-- Yuboriladi: hech narsa.
+- Query:
+  - `include_inactive` (bool, default `false`)
 - Qaytadi: `Product[]` (to'g'ridan-to'g'ri list).
 
 ### `GET /products/search` (Public)
@@ -239,6 +240,7 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 - Query:
   - `search` (string, ixtiyoriy)
   - `category_id` (int, ixtiyoriy)
+  - `include_inactive` (bool, default `false`)
 - Qaytadi (`ok_response`):
 ```json
 { "ok": true, "data": [], "meta": { "count": 0 }, "error": null }
@@ -253,6 +255,8 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 ### `GET /products/category/{category_id}` (Public)
 - Vazifa: kategoriya bo'yicha mahsulotlar.
 - Yuboriladi: `category_id` (path).
+- Query:
+  - `include_inactive` (bool, default `false`)
 - Qaytadi: `Product[]`.
 
 ### `GET /products/{product_id}` (Public)
