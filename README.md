@@ -213,6 +213,18 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 }
 ```
 
+### `GET /frontend/bootstrap/normalized`
+- Vazifa: eski bootstrapga o'xshash, lekin duplicate kamroq (`entities + ids` format).
+- Query:
+  - `include_inactive` (bool, default: `false`)
+- Qaytadi:
+  - `entities.categories|collections|colors|sizes|products|product_items|product_photos|product_details`
+  - `result.product_ids`
+- Izoh:
+  - eski endpoint saqlanadi (`/frontend/bootstrap`)
+  - yangi endpointda bir xil obyektlar bitta joyda saqlanadi, bog'lanishlar `*_ids` orqali beriladi.
+  - tayyor TypeScript tiplari: `frontend_bootstrap_normalized.types.ts`
+
 ---
 
 ## 4.3 Products API (`/products`)
@@ -820,6 +832,19 @@ Ruxsat etilgan statuslar:
   - `repeat_sales` - takroriy sotuv metrikasi
   - `sales_by_day` - kunlik sotuv
   - `sales_by_week` - haftalik sotuv
+
+### `GET /history/stats/dashboard`
+- Vazifa: admin dashboard uchun 1 ta endpointda asosiy KPI.
+- Query:
+  - `low_stock_threshold` (default 5)
+  - `low_stock_limit` (default 10)
+  - `top_limit` (default 10)
+- Qaytadi (`ok_response`) ichida:
+  - `today_sales` (`orders_count`, `sold_items`, `revenue`)
+  - `week_sales` (`orders_count`, `sold_items`, `revenue`)
+  - `new_orders` (status=`yangi`)
+  - `low_stock` (kam qolgan variantlar)
+  - `top_products` (eng ko'p sotilgan mahsulotlar)
 
 ---
 

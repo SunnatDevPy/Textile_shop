@@ -1,13 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import and_, desc, func, select
 
 from fast_routers.admin_auth import verify_admin_credentials
-from models import AdminUser, AuditLog, Order, OrderItem
+from models import AdminUser, AuditLog, Order, OrderItem, Product, ProductItems
 from models.database import db
 from utils.response import ok_response
+from utils.security import enforce_rate_limit
 
 history_router = APIRouter(prefix="/history", tags=["History"])
 
@@ -116,10 +117,12 @@ async def logs_history(
     summary="Sotuv statistikasi (sanadan sanagacha, operator/admin)",
 )
 async def sales_stats(
+    request: Request,
     _: AdminUser = Depends(verify_admin_credentials),
     date_from: Optional[str] = Query(None, description="ISO sana: 2026-04-28 yoki 2026-04-28T10:00:00"),
     date_to: Optional[str] = Query(None, description="ISO sana: 2026-04-30 yoki 2026-04-30T23:59:59"),
 ):
+    enforce_rate_limit(request, scope="analytics")
     try:
         dt_from, dt_to = _parse_date_range(date_from, date_to)
     except ValueError:
@@ -214,11 +217,13 @@ async def sales_stats(
     summary="Analytics v2: top products, conversion, avg check, LTV, repeat, day/week sales",
 )
 async def analytics_v2(
+    request: Request,
     _: AdminUser = Depends(verify_admin_credentials),
     date_from: Optional[str] = Query(None, description="ISO sana: 2026-04-28 yoki 2026-04-28T10:00:00"),
     date_to: Optional[str] = Query(None, description="ISO sana: 2026-04-30 yoki 2026-04-30T23:59:59"),
     top_limit: int = Query(10, ge=1, le=100),
 ):
+    enforce_rate_limit(request, scope="analytics")
     try:
         dt_from, dt_to = _parse_date_range(date_from, date_to)
     except ValueError:
@@ -420,5 +425,130 @@ async def analytics_v2(
             "repeat_sales": repeat_sales,
             "sales_by_day": sales_by_day,
             "sales_by_week": sales_by_week,
+        }
+    )
+
+
+@history_router.get(
+    "/stats/dashboard",
+    summary="Admin dashboard summary: today/week sales, new orders, low stock, top products",
+)
+async def dashboard_stats(
+    request: Request,
+    _: AdminUser = Depends(verify_admin_credentials),
+    low_stock_threshold: int = Query(5, ge=0, le=1000),
+    low_stock_limit: int = Query(10, ge=1, le=100),
+    top_limit: int = Query(10, ge=1, le=100),
+):
+    enforce_rate_limit(request, scope="analytics")
+
+    now = datetime.now()
+    today_start = datetime(now.year, now.month, now.day)
+    week_start = today_start - timedelta(days=today_start.weekday())
+
+    sold_statuses = [
+        Order.StatusOrder.PAID.value,
+        Order.StatusOrder.IS_PROCESS.value,
+        Order.StatusOrder.READY.value,
+        Order.StatusOrder.IN_PROGRESS.value,
+        Order.StatusOrder.DELIVERED.value,
+    ]
+
+    async def _sales_between(start_dt: datetime):
+        row = (
+            await db.execute(
+                select(
+                    func.count(func.distinct(Order.id)).label("orders_count"),
+                    func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
+                    func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
+                )
+                .select_from(Order)
+                .join(OrderItem, OrderItem.order_id == Order.id)
+                .where(Order.status.in_(sold_statuses), Order.created_at >= start_dt)
+            )
+        ).one()
+        return {
+            "orders_count": int(row.orders_count or 0),
+            "sold_items": int(row.sold_items or 0),
+            "revenue": int(row.revenue or 0),
+        }
+
+    today_sales = await _sales_between(today_start)
+    week_sales = await _sales_between(week_start)
+
+    new_orders = int(
+        (
+            await db.execute(
+                select(func.count(Order.id)).where(Order.status == Order.StatusOrder.NEW.value)
+            )
+        ).scalar()
+        or 0
+    )
+
+    low_stock_rows = (
+        await db.execute(
+            select(
+                ProductItems.id.label("product_item_id"),
+                ProductItems.product_id.label("product_id"),
+                ProductItems.color_id.label("color_id"),
+                ProductItems.size_id.label("size_id"),
+                ProductItems.total_count.label("stock"),
+                Product.name_uz.label("product_name_uz"),
+            )
+            .select_from(ProductItems)
+            .join(Product, Product.id == ProductItems.product_id)
+            .where(ProductItems.total_count <= low_stock_threshold)
+            .order_by(ProductItems.total_count.asc(), ProductItems.id.asc())
+            .limit(low_stock_limit)
+        )
+    ).all()
+    low_stock = [
+        {
+            "product_item_id": int(r.product_item_id),
+            "product_id": int(r.product_id),
+            "product_name_uz": r.product_name_uz,
+            "color_id": int(r.color_id),
+            "size_id": int(r.size_id),
+            "stock": int(r.stock),
+        }
+        for r in low_stock_rows
+    ]
+
+    top_products_rows = (
+        await db.execute(
+            select(
+                OrderItem.product_id.label("product_id"),
+                Product.name_uz.label("name_uz"),
+                func.sum(OrderItem.count).label("sold_items"),
+                func.sum(OrderItem.total).label("revenue"),
+            )
+            .select_from(OrderItem)
+            .join(Order, Order.id == OrderItem.order_id)
+            .join(Product, Product.id == OrderItem.product_id)
+            .where(Order.status.in_(sold_statuses))
+            .group_by(OrderItem.product_id, Product.name_uz)
+            .order_by(desc(func.sum(OrderItem.count)), desc(func.sum(OrderItem.total)))
+            .limit(top_limit)
+        )
+    ).all()
+    top_products = [
+        {
+            "product_id": int(r.product_id),
+            "name_uz": r.name_uz,
+            "sold_items": int(r.sold_items or 0),
+            "revenue": int(r.revenue or 0),
+        }
+        for r in top_products_rows
+    ]
+
+    return ok_response(
+        {
+            "generated_at": now.isoformat(),
+            "today_sales": today_sales,
+            "week_sales": week_sales,
+            "new_orders": new_orders,
+            "low_stock": low_stock,
+            "top_products": top_products,
+            "currency": "UZS",
         }
     )
