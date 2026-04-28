@@ -20,12 +20,12 @@ def _require_image_upload(photo: UploadFile) -> None:
         )
 
 
-@shop_product_router.get('', name='Get all products')
+@shop_product_router.get('', name='Get all products', summary="Barcha mahsulotlar ro'yxati")
 async def get_all_products():
     return await Product.all()
 
 
-@shop_product_router.get('/search', name='Search products')
+@shop_product_router.get('/search', name='Search products', summary="Mahsulot qidirish (nom/kategoriya)")
 async def search_products(
     search: Optional[str] = None,
     category_id: Optional[int] = None,
@@ -39,12 +39,12 @@ async def search_products(
     return {'products': products}
 
 
-@shop_product_router.get('/category/{category_id}', name='Products by category')
+@shop_product_router.get('/category/{category_id}', name='Products by category', summary="Kategoriya bo'yicha mahsulotlar")
 async def list_products_by_category(category_id: int):
     return await Product.get_products_category(category_id)
 
 
-@shop_product_router.get('/{product_id}', name='Get product')
+@shop_product_router.get('/{product_id}', name='Get product', summary="Bitta mahsulotni olish")
 async def get_product(product_id: int):
     product = await Product.get_or_none(product_id)
     if product is None:
@@ -52,7 +52,7 @@ async def get_product(product_id: int):
     return {'product': product}
 
 
-@shop_product_router.post('', name='Create product')
+@shop_product_router.post('', name='Create product', summary="Mahsulot yaratish (admin)")
 async def create_product(
     _: AdminAuth,
     category_id: int = Form(),
@@ -107,7 +107,7 @@ async def create_product(
     return {'ok': True, 'id': product.id}
 
 
-@shop_product_router.patch('/{product_id}', name='Update product')
+@shop_product_router.patch('/{product_id}', name='Update product', summary="Mahsulotni yangilash (admin)")
 async def update_product(
     product_id: int,
     _: AdminAuth,
@@ -174,7 +174,7 @@ async def update_product(
     return {'ok': True}
 
 
-@shop_product_router.delete('/{product_id}', name='Delete product')
+@shop_product_router.delete('/{product_id}', name='Delete product', summary="Mahsulotni o'chirish (admin)")
 async def delete_product(product_id: int, _: AdminAuth):
     product = await Product.get_or_none(product_id)
     if product is None:

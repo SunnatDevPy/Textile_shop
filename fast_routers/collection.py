@@ -40,15 +40,18 @@ class UpdateOrCreateCollectionModel(BaseModel):
         return cls(name_uz=name_uz, name_ru=name_ru, name_eng=name_eng)
 
 
-@collections_router.get(path='/', name="Collections")
+@collections_router.get(path='/', name="Collections", summary="Kolleksiyalar ro'yxati")
 async def list_collection() -> list[ListCollectionModel]:
     return await Collection.all()
 
-@collections_router.get(path='/', name="Collections Get One")
+@collections_router.get(path='/{collection_id}', name="Collections Get One", summary="Bitta kolleksiyani olish")
 async def collection_get_one(collection_id: int):
-    return await Collection.get_or_none(collection_id)
+    collection = await Collection.get_or_none(collection_id)
+    if not collection:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
+    return collection
 
-@collections_router.post(path="/", name="Create Collections")
+@collections_router.post(path="/", name="Create Collections", summary="Kolleksiya yaratish (admin)")
 async def create_collection(
         _: Annotated[AdminUser, Depends(verify_admin_credentials)],
         payload: Annotated[UpdateOrCreateCollectionModel, Depends(UpdateOrCreateCollectionModel.as_form)]
@@ -61,7 +64,7 @@ async def create_collection(
 
 
 # # Update Collection
-@collections_router.patch(path='/{collection_id}', name="Update Collections")
+@collections_router.patch(path='/{collection_id}', name="Update Collections", summary="Kolleksiyani yangilash (admin)")
 async def list_collection(
         collection_id: int,
         _: Annotated[AdminUser, Depends(verify_admin_credentials)],
@@ -80,11 +83,10 @@ async def list_collection(
     return {"ok": True, "data": collection}
 
 
-@collections_router.delete(path='/{collection_id}', name="Delete Collections")
+@collections_router.delete(path='/{collection_id}', name="Delete Collections", summary="Kolleksiyani o'chirish (admin)")
 async def list_collection(collection_id: int, _: Annotated[AdminUser, Depends(verify_admin_credentials)]):
     collection = await Collection.get_or_none(collection_id)
     if collection:
         await Collection.delete(collection_id)
         return {"ok": True}
-    else:
-        return Response("Note found", status.HTTP_404_NOT_FOUND)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")

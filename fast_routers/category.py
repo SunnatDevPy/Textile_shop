@@ -37,15 +37,18 @@ class UpdateOrCreateCategoryModel(BaseModel):
         return cls(name_uz=name_uz, name_ru=name_ru, name_eng=name_eng)
 
 
-@categories_router.get(path='', name="Categories")
+@categories_router.get(path='', name="Categories", summary="Kategoriyalar ro'yxati")
 async def list_category():
     return await Category.all()
 
-@categories_router.get(path='', name="Categories Get One")
+@categories_router.get(path='/{category_id}', name="Categories Get One", summary="Bitta kategoriyani olish")
 async def category_get_one(category_id: int):
-    return await Category.get_or_none(category_id)
+    category = await Category.get_or_none(category_id)
+    if not category:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    return category
 
-@categories_router.post(path="", name="Create Category")
+@categories_router.post(path="", name="Create Category", summary="Kategoriya yaratish (admin)")
 async def create_category(
         _: Annotated[AdminUser, Depends(verify_admin_credentials)],
         payload: Annotated[UpdateOrCreateCategoryModel, Depends(UpdateOrCreateCategoryModel.as_form)]
@@ -58,7 +61,7 @@ async def create_category(
 
 
 # # Update Category
-@categories_router.patch(path='/{category_id}', name="Update Category")
+@categories_router.patch(path='/{category_id}', name="Update Category", summary="Kategoriyani yangilash (admin)")
 async def list_category_shop(
         category_id: int,
         _: Annotated[AdminUser, Depends(verify_admin_credentials)],
@@ -77,11 +80,10 @@ async def list_category_shop(
     return {"ok": True, "data": category}
 
 
-@categories_router.delete(path='/{category_id}', name="Delete Category")
+@categories_router.delete(path='/{category_id}', name="Delete Category", summary="Kategoriyani o'chirish (admin)")
 async def list_category_shop(category_id: int, _: Annotated[AdminUser, Depends(verify_admin_credentials)]):
     category = await Category.get_or_none(category_id)
     if category:
         await Category.delete(category_id)
         return {"ok": True}
-    else:
-        return Response("Note found", status.HTTP_404_NOT_FOUND)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")

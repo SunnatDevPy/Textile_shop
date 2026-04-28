@@ -29,17 +29,20 @@ class UpdateOrCreateSizeModel(BaseModel):
         return cls(name=name)
 
 
-@size_router.get(path='/', name="Size")
+@size_router.get(path='/', name="Size", summary="O'lchamlar ro'yxati")
 async def list_size() -> list[ListSizeModel]:
     return await Size.all()
 
 
-@size_router.get(path='/', name="Collections Get One")
+@size_router.get(path='/{size_id}', name="Collections Get One", summary="Bitta o'lchamni olish")
 async def size_get_one(size_id: int):
-    return await Size.get_or_none(size_id)
+    size_row = await Size.get_or_none(size_id)
+    if not size_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Size not found")
+    return size_row
 
 
-@size_router.post(path="/", name="Create Size")
+@size_router.post(path="/", name="Create Size", summary="O'lcham yaratish (admin)")
 async def create_size(
         _: Annotated[AdminUser, Depends(verify_admin_credentials)],
         payload: Annotated[UpdateOrCreateSizeModel, Depends(UpdateOrCreateSizeModel.as_form)]
@@ -52,7 +55,7 @@ async def create_size(
 
 
 # # Update Size
-@size_router.patch(path='/{size_id}', name="Update Size")
+@size_router.patch(path='/{size_id}', name="Update Size", summary="O'lchamni yangilash (admin)")
 async def list_size(
         size_id: int,
         _: Annotated[AdminUser, Depends(verify_admin_credentials)],
@@ -71,11 +74,10 @@ async def list_size(
     return {"ok": True, "data": size}
 
 
-@size_router.delete(path='/{size_id}', name="Delete Size")
+@size_router.delete(path='/{size_id}', name="Delete Size", summary="O'lchamni o'chirish (admin)")
 async def list_size(size_id: int, _: Annotated[AdminUser, Depends(verify_admin_credentials)]):
     size = await Size.get_or_none(size_id)
     if size:
         await Size.delete(size_id)
         return {"ok": True}
-    else:
-        return Response("Note found", status.HTTP_404_NOT_FOUND)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Size not found")

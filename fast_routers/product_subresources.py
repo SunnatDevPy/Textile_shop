@@ -30,7 +30,7 @@ product_detail_router = APIRouter(prefix='/product-details', tags=['Product deta
 # --- ProductPhoto ---
 
 
-@product_photo_router.get('', name='List product photos')
+@product_photo_router.get('', name='List product photos', summary="Mahsulot rasmlari ro'yxati")
 async def list_product_photos(product_id: Optional[int] = None):
     if product_id is None:
         return await ProductPhoto.all()
@@ -38,7 +38,7 @@ async def list_product_photos(product_id: Optional[int] = None):
     return list((await db.execute(q)).scalars().all())
 
 
-@product_photo_router.get('/{photo_id}', name='Get product photo')
+@product_photo_router.get('/{photo_id}', name='Get product photo', summary="Bitta mahsulot rasmini olish")
 async def get_product_photo(photo_id: int):
     row = await ProductPhoto.get_or_none(photo_id)
     if row is None:
@@ -46,7 +46,7 @@ async def get_product_photo(photo_id: int):
     return row
 
 
-@product_photo_router.post('', name='Create product photo')
+@product_photo_router.post('', name='Create product photo', summary="Mahsulot rasmi qo'shish (admin)")
 async def create_product_photo(
     _: AdminAuth,
     product_id: int = Form(),
@@ -65,7 +65,7 @@ async def create_product_photo(
     return {'ok': True, 'id': row.id}
 
 
-@product_photo_router.patch('/{photo_id}', name='Update product photo')
+@product_photo_router.patch('/{photo_id}', name='Update product photo', summary="Mahsulot rasmini yangilash (admin)")
 async def update_product_photo(
     photo_id: int,
     _: AdminAuth,
@@ -93,7 +93,7 @@ async def update_product_photo(
     return {'ok': True}
 
 
-@product_photo_router.delete('/{photo_id}', name='Delete product photo')
+@product_photo_router.delete('/{photo_id}', name='Delete product photo', summary="Mahsulot rasmini o'chirish (admin)")
 async def delete_product_photo(photo_id: int, _: AdminAuth):
     if await ProductPhoto.get_or_none(photo_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Rasm topilmadi')
@@ -110,14 +110,14 @@ async def delete_product_photo(photo_id: int, _: AdminAuth):
 # --- ProductItems ---
 
 
-@product_items_router.get('', name='List product items')
+@product_items_router.get('', name='List product items', summary="Mahsulot variantlari ro'yxati")
 async def list_product_items(product_id: Optional[int] = None):
     if product_id is None:
         return await ProductItems.all()
     return await ProductItems.get_product_items(product_id)
 
 
-@product_items_router.get('/{item_id}', name='Get product item')
+@product_items_router.get('/{item_id}', name='Get product item', summary="Bitta mahsulot variantini olish")
 async def get_product_item(item_id: int):
     row = await ProductItems.get_or_none(item_id)
     if row is None:
@@ -125,7 +125,7 @@ async def get_product_item(item_id: int):
     return row
 
 
-@product_items_router.post('', name='Create product item')
+@product_items_router.post('', name='Create product item', summary="Mahsulot varianti yaratish (admin)")
 async def create_product_item(
     _: AdminAuth,
     product_id: int = Form(),
@@ -154,7 +154,7 @@ async def create_product_item(
     return {'ok': True, 'id': row.id}
 
 
-@product_items_router.patch('/{item_id}', name='Update product item')
+@product_items_router.patch('/{item_id}', name='Update product item', summary="Mahsulot variantini yangilash (admin)")
 async def update_product_item(
     item_id: int,
     _: AdminAuth,
@@ -194,7 +194,7 @@ async def update_product_item(
     return {'ok': True}
 
 
-@product_items_router.delete('/{item_id}', name='Delete product item')
+@product_items_router.delete('/{item_id}', name='Delete product item', summary="Mahsulot variantini o'chirish (admin)")
 async def delete_product_item(item_id: int, _: AdminAuth):
     if await ProductItems.get_or_none(item_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Item topilmadi')
@@ -211,7 +211,7 @@ async def delete_product_item(item_id: int, _: AdminAuth):
 # --- ProductDetail ---
 
 
-@product_detail_router.get('', name='List product details')
+@product_detail_router.get('', name='List product details', summary="Mahsulot tafsilotlari ro'yxati")
 async def list_product_details(product_id: Optional[int] = None):
     if product_id is None:
         return await ProductDetail.all()
@@ -219,7 +219,7 @@ async def list_product_details(product_id: Optional[int] = None):
     return list((await db.execute(q)).scalars().all())
 
 
-@product_detail_router.get('/{detail_id}', name='Get product detail')
+@product_detail_router.get('/{detail_id}', name='Get product detail', summary="Bitta mahsulot tafsilotini olish")
 async def get_product_detail_row(detail_id: int):
     row = await ProductDetail.get_or_none(detail_id)
     if row is None:
@@ -227,7 +227,7 @@ async def get_product_detail_row(detail_id: int):
     return row
 
 
-@product_detail_router.post('', name='Create product detail')
+@product_detail_router.post('', name='Create product detail', summary="Mahsulot tafsiloti yaratish (admin)")
 async def create_product_detail(
     _: AdminAuth,
     product_id: int = Form(),
@@ -252,7 +252,7 @@ async def create_product_detail(
     return {'ok': True, 'id': row.id}
 
 
-@product_detail_router.patch('/{detail_id}', name='Update product detail')
+@product_detail_router.patch('/{detail_id}', name='Update product detail', summary="Mahsulot tafsilotini yangilash (admin)")
 async def update_product_detail(
     detail_id: int,
     _: AdminAuth,
@@ -288,7 +288,7 @@ async def update_product_detail(
     return {'ok': True}
 
 
-@product_detail_router.delete('/{detail_id}', name='Delete product detail')
+@product_detail_router.delete('/{detail_id}', name='Delete product detail', summary="Mahsulot tafsilotini o'chirish (admin)")
 async def delete_product_detail(detail_id: int, _: AdminAuth):
     if await ProductDetail.get_or_none(detail_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Detail topilmadi')

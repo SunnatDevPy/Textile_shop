@@ -51,12 +51,12 @@ class ConfirmPaymentPayload(BaseModel):
     next_status: Optional[str] = None
 
 
-@order_router.get('', name='Orders list')
+@order_router.get('', name='Orders list', summary="Buyurtmalar ro'yxati")
 async def list_orders():
     return await Order.all()
 
 
-@order_router.get('/{order_id}', name='Order detail')
+@order_router.get('/{order_id}', name='Order detail', summary="Bitta buyurtma tafsiloti")
 async def get_order(order_id: int):
     order = await Order.get_or_none(order_id, relationship=Order.order_items)
     if order is None:
@@ -64,7 +64,7 @@ async def get_order(order_id: int):
     return order
 
 
-@order_router.post('', name='Create order')
+@order_router.post('', name='Create order', summary="Yangi buyurtma yaratish")
 async def create_order(payload: CreateOrderPayload):
     pay = payload.payment.strip().lower()
     if pay not in (Order.Payment.CLICK.value, Order.Payment.PAYME.value):
@@ -146,7 +146,7 @@ async def create_order(payload: CreateOrderPayload):
     }
 
 
-@order_router.post('/{order_id}/confirm-payment', name='Confirm payment: status + stock')
+@order_router.post('/{order_id}/confirm-payment', name='Confirm payment: status + stock', summary="To'lovni tasdiqlash va stockni kamaytirish")
 async def confirm_payment(
     order_id: int,
     body: Optional[ConfirmPaymentPayload] = None,
@@ -226,7 +226,7 @@ async def confirm_payment(
     return {'ok': True, 'order_id': order_id, 'status': next_status}
 
 
-@order_router.patch('/{order_id}/status', name='Update order status (admin)')
+@order_router.patch('/{order_id}/status', name='Update order status (admin)', summary="Buyurtma statusini qo'lda yangilash (admin)")
 async def update_order_status(
     order_id: int,
     _: AdminAuth,

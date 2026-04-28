@@ -40,15 +40,18 @@ class UpdateOrCreateColorModel(BaseModel):
         return cls(name_uz=name_uz, name_ru=name_ru, name_eng=name_eng)
 
 
-@color_router.get(path='/', name="Color")
+@color_router.get(path='/', name="Color", summary="Ranglar ro'yxati")
 async def list_color() -> list[ListColorModel]:
     return await Color.all()
 
-@color_router.get(path='/', name="Collections Get One")
+@color_router.get(path='/{color_id}', name="Collections Get One", summary="Bitta rangni olish")
 async def color_get_one(color_id: int):
-    return await Color.get_or_none(color_id)
+    color = await Color.get_or_none(color_id)
+    if not color:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Color not found")
+    return color
 
-@color_router.post(path="/", name="Create Color")
+@color_router.post(path="/", name="Create Color", summary="Rang yaratish (admin)")
 async def create_color(
         _: Annotated[AdminUser, Depends(verify_admin_credentials)],
         payload: Annotated[UpdateOrCreateColorModel, Depends(UpdateOrCreateColorModel.as_form)]
@@ -61,7 +64,7 @@ async def create_color(
 
 
 # # Update Color
-@color_router.patch(path='/{color_id}', name="Update Color")
+@color_router.patch(path='/{color_id}', name="Update Color", summary="Rangni yangilash (admin)")
 async def list_color(
         color_id: int,
         _: Annotated[AdminUser, Depends(verify_admin_credentials)],
@@ -80,11 +83,10 @@ async def list_color(
     return {"ok": True, "data": color}
 
 
-@color_router.delete(path='/{color_id}', name="Delete Color")
+@color_router.delete(path='/{color_id}', name="Delete Color", summary="Rangni o'chirish (admin)")
 async def list_color(color_id: int, _: Annotated[AdminUser, Depends(verify_admin_credentials)]):
     color = await Color.get_or_none(color_id)
     if color:
         await Color.delete(color_id)
         return {"ok": True}
-    else:
-        return Response("Note found", status.HTTP_404_NOT_FOUND)
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Color not found")
