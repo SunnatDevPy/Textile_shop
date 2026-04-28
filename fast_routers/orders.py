@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated, Optional, Union
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, desc, select, update
 from sqlalchemy.exc import DBAPIError
@@ -13,10 +13,38 @@ from fast_routers.admin_auth import verify_admin_credentials
 from models import AdminUser, Order, OrderItem, Product, ProductItems
 from models.database import db
 from utils.audit import write_audit_log
+from utils.response import ok_response
+from utils.security import enforce_rate_limit
 
 order_router = APIRouter(prefix='/order', tags=['Orders'])
 
 StaffAuth = Annotated[AdminUser, Depends(verify_admin_credentials)]
+
+ALLOWED_STATUS_TRANSITIONS = {
+    Order.StatusOrder.NEW.value: {
+        Order.StatusOrder.PAID.value,
+        Order.StatusOrder.IS_PROCESS.value,
+        Order.StatusOrder.CANCELLED.value,
+    },
+    Order.StatusOrder.PAID.value: {
+        Order.StatusOrder.IS_PROCESS.value,
+        Order.StatusOrder.CANCELLED.value,
+    },
+    Order.StatusOrder.IS_PROCESS.value: {
+        Order.StatusOrder.READY.value,
+        Order.StatusOrder.CANCELLED.value,
+    },
+    Order.StatusOrder.READY.value: {
+        Order.StatusOrder.IN_PROGRESS.value,
+        Order.StatusOrder.CANCELLED.value,
+    },
+    Order.StatusOrder.IN_PROGRESS.value: {
+        Order.StatusOrder.DELIVERED.value,
+        Order.StatusOrder.CANCELLED.value,
+    },
+    Order.StatusOrder.DELIVERED.value: set(),
+    Order.StatusOrder.CANCELLED.value: set(),
+}
 
 
 def _status_value(s: Union[str, object, None]) -> Optional[str]:
@@ -81,8 +109,9 @@ class ConfirmPaymentPayload(BaseModel):
 
 
 @order_router.get('', name='Orders list', summary="Buyurtmalar ro'yxati (operator/admin)")
-async def list_orders(_: StaffAuth):
-    return await Order.all()
+async def list_orders(request: Request, _: StaffAuth):
+    enforce_rate_limit(request, scope="order_read")
+    return ok_response(await Order.all())
 
 
 @order_router.get(
@@ -132,7 +161,7 @@ async def search_orders(
     query = query.limit(max(1, min(limit, 1000)))
 
     orders = (await db.execute(query)).scalars().all()
-    return {"orders": orders, "count": len(orders)}
+    return ok_response(orders, meta={"count": len(orders)})
 
 
 @order_router.get('/{order_id}', name='Order detail', summary="Bitta buyurtma tafsiloti (operator/admin)")
@@ -140,11 +169,12 @@ async def get_order(order_id: int, _: StaffAuth):
     order = await Order.get_or_none(order_id, relationship=Order.order_items)
     if order is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Buyurtma topilmadi')
-    return order
+    return ok_response(order)
 
 
 @order_router.post('', name='Create order', summary="Yangi buyurtma yaratish")
-async def create_order(payload: CreateOrderPayload):
+async def create_order(request: Request, payload: CreateOrderPayload):
+    enforce_rate_limit(request, scope="order_create")
     pay = payload.payment.strip().lower()
     if pay not in (Order.Payment.CLICK.value, Order.Payment.PAYME.value):
         raise HTTPException(
@@ -217,12 +247,13 @@ async def create_order(payload: CreateOrderPayload):
             detail="Buyurtma qatorlarini saqlashda xatolik",
         )
 
-    return {
-        'ok': True,
-        'order_id': order.id,
-        'status': _status_value(order.status),
-        'order_items': order_items,
-    }
+    return ok_response(
+        {
+            'order_id': order.id,
+            'status': _status_value(order.status),
+            'order_items': order_items,
+        }
+    )
 
 
 @order_router.post('/{order_id}/confirm-payment', name='Confirm payment: status + stock', summary="To'lovni tasdiqlash va stockni kamaytirish (operator/admin)")
@@ -289,7 +320,7 @@ async def confirm_payment(
             detail="To'lovni tasdiqlashda xatolik",
         )
 
-    return {'ok': True, 'order_id': order_id, 'status': next_status}
+    return ok_response({'order_id': order_id, 'status': next_status})
 
 
 @order_router.patch('/{order_id}/status', name='Update order status (staff)', summary="Buyurtma statusini qo'lda yangilash (operator/admin)")
@@ -311,6 +342,13 @@ async def update_order_status(
         )
 
     current = _status_value(order.status)
+    allowed_next = ALLOWED_STATUS_TRANSITIONS.get(current, set())
+    if new_status not in allowed_next and new_status != current:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Noto'g'ri status transition: {current} -> {new_status}",
+        )
+
     paid_statuses = {
         Order.StatusOrder.PAID.value,
         Order.StatusOrder.IS_PROCESS.value,
@@ -345,4 +383,4 @@ async def update_order_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Statusni yangilashda xatolik",
         )
-    return {'ok': True, 'order_id': order_id, 'status': new_status}
+    return ok_response({'order_id': order_id, 'status': new_status})

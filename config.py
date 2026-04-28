@@ -34,6 +34,10 @@ class Configuration:
     SECRET_KEY: str = os.getenv('SECRET_KEY')
     ADMIN_PASS: str = os.getenv('ADMIN_PASS')
     ADMIN_USERNAME: str = os.getenv('ADMIN_USERNAME')
+    CLICK_SECRET_KEY: str = os.getenv('CLICK_SECRET_KEY', '')
+    PAYME_SECRET_KEY: str = os.getenv('PAYME_SECRET_KEY', '')
+    PAYMENT_CALLBACK_IP_WHITELIST: str = os.getenv('PAYMENT_CALLBACK_IP_WHITELIST', '')
+    RATE_LIMIT_PER_MINUTE: int = int(os.getenv('RATE_LIMIT_PER_MINUTE', '120'))
 
 # class CustomFileSystemStorage(FileSystemStorage):
 #

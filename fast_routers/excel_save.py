@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from fast_routers.admin_auth import require_admin
 from models import AdminUser, Category, Collection, Product
 from utils.audit import write_audit_log
+from utils.response import ok_response
 
 excel_router = APIRouter(prefix="/excel", tags=["Excel"])
 
@@ -145,13 +146,14 @@ async def import_products_from_excel(
             except Exception as exc:
                 errors.append({"row": int(idx) + 2, "error": str(exc)})
 
-        return {
-            "ok": True,
-            "created": created,
-            "updated": updated,
-            "errors_count": len(errors),
-            "errors": errors[:100],
-        }
+        return ok_response(
+            {
+                "created": created,
+                "updated": updated,
+                "errors": errors[:100],
+            },
+            meta={"errors_count": len(errors)},
+        )
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)

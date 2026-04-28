@@ -8,6 +8,7 @@ from starlette import status
 from fast_routers.admin_auth import require_admin
 from models import AdminUser, Category, Collection, Product, ProductPhoto
 from models.database import db
+from utils.response import ok_response
 
 shop_product_router = APIRouter(prefix='/products', tags=['Products'])
 
@@ -38,7 +39,7 @@ async def search_products(
         products = await Product.get_products_category(category_id)
     else:
         products = await Product.all()
-    return {'products': products}
+    return ok_response(products, meta={"count": len(products)})
 
 
 @shop_product_router.get(
@@ -78,7 +79,7 @@ async def search_products_advanced(
 
     query = query.limit(max(1, min(limit, 500)))
     products = (await db.execute(query)).scalars().all()
-    return {"products": products, "count": len(products)}
+    return ok_response(products, meta={"count": len(products)})
 
 
 @shop_product_router.get('/category/{category_id}', name='Products by category', summary="Kategoriya bo'yicha mahsulotlar")

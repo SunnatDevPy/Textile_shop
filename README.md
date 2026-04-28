@@ -20,6 +20,10 @@ Backend `FastAPI + PostgreSQL` asosida yozilgan va frontend bilan REST API orqal
 - To'lov integratsiyasi (`/payments/...`) — Click va Payme callbacklari
 - Excel import (`/excel/products/import`) — product create/update
 - Tarix va loglar (`/history/...`) — product/order/log history
+- Kengaytirilgan search (`/products/search/advanced`, `/order/search`)
+- Postman collection (`postman/Textile_shop.postman_collection.json`)
+- OpenAPI client yo'riqnomasi (`OPENAPI_CLIENT.md`)
+- Integration testlar (`tests/integration/...`)
 - Operator/Admin boshqaruvi (`/panel/...`)
 - Frontend bootstrap (`/frontend/bootstrap`)
 - Tizim tekshiruv endpointlari (`/system/health`, `/system/ready`)
@@ -147,6 +151,8 @@ Loyihada **faqat HTTP Basic Auth** bor (JWT o'chirilgan).
 Eslatma:
 - Bu endpointlar callback/workflow uchun tayyorlangan.
 - Real prodga chiqishda Click/Payme imzo (signature) tekshiruvi qo'shilishi kerak.
+- Hozir API'da `X-Signature` orqali HMAC tekshirish qo'llab-quvvatlanadi (secret bo'lsa majburiy).
+- Callback endpointlar uchun IP whitelist va rate limit bor.
 
 ### Excel orqali product import/create
 
@@ -177,6 +183,13 @@ Natija:
 - `GET /history/logs?entity=...&date_from=...&date_to=...`
   - tizim loglari tarixi
 
+### Search API
+
+- `GET /products/search/advanced`
+  - `search`, `category_id`, `collection_id`, `is_active`, `min_price`, `max_price`, `limit`
+- `GET /order/search`
+  - `order_id`, `status_q`, `payment`, `contact`, `first_name`, `date_from`, `date_to`, `limit`
+
 ### Buyurtma statuslari
 
 - `yangi`
@@ -190,6 +203,7 @@ Natija:
 Muhim:
 - `yangi -> to'landi` yoki `yangi -> jarayonda` bo'lsa, ombordagi son avtomatik kamayadi.
 - `confirm-payment` ham stockni kamaytiradi (takror chaqirsa qayta kamaytirmaydi).
+- status transition qoidalari bor, noto'g'ri transition bloklanadi.
 
 ### Admin endpointlar (Basic auth talab qiladi)
 
@@ -277,6 +291,12 @@ await fetch("https://textile.okach-admin.uz/excel/products/import", {
 - `main.py` ichida CORS hozircha `*` ochiq turibdi. Prod uchun domenlar bilan cheklang.
 - `media/` papka statik rasm fayllar uchun ishlatiladi (`/media` orqali ochiladi).
 - App ishga tushganda jadvallar `create_all()` bilan avtomatik yaratiladi.
+- API javob formati asosiy endpointlarda standartlashgan: `{ok, data, meta, error}`.
+- Payment security env sozlamalari:
+  - `CLICK_SECRET_KEY`
+  - `PAYME_SECRET_KEY`
+  - `PAYMENT_CALLBACK_IP_WHITELIST`
+  - `RATE_LIMIT_PER_MINUTE`
 
 ## Ishlab chiqish va deploy
 
@@ -316,3 +336,11 @@ Qo'shimcha: `DEPLOY_CHECKLIST.md`
 - [ ] Rasm upload `multipart/form-data` bilan ishlayapti
 - [ ] `POST /order` JSON bilan ishlayapti
 - [ ] Prodga chiqqanda CORS domenlar bilan cheklangan
+
+## Testlar
+
+Integration testlar:
+
+```bash
+pytest tests/integration -q
+```

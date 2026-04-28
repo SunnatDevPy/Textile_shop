@@ -7,6 +7,7 @@ from sqlalchemy import and_, desc, select
 from fast_routers.admin_auth import verify_admin_credentials
 from models import AdminUser, AuditLog, Order
 from models.database import db
+from utils.response import ok_response
 
 history_router = APIRouter(prefix="/history", tags=["History"])
 
@@ -44,7 +45,8 @@ async def orders_history(
     if criteria:
         query = query.where(and_(*criteria))
     query = query.limit(limit)
-    return (await db.execute(query)).scalars().all()
+    rows = (await db.execute(query)).scalars().all()
+    return ok_response(rows, meta={"count": len(rows)})
 
 
 @history_router.get(
@@ -74,7 +76,8 @@ async def products_history(
     if criteria:
         query = query.where(and_(*criteria))
     query = query.limit(limit)
-    return (await db.execute(query)).scalars().all()
+    rows = (await db.execute(query)).scalars().all()
+    return ok_response(rows, meta={"count": len(rows)})
 
 
 @history_router.get(
@@ -104,4 +107,5 @@ async def logs_history(
     if criteria:
         query = query.where(and_(*criteria))
     query = query.limit(limit)
-    return (await db.execute(query)).scalars().all()
+    rows = (await db.execute(query)).scalars().all()
+    return ok_response(rows, meta={"count": len(rows)})

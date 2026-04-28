@@ -1,0 +1,116 @@
+{
+  "info": {
+    "name": "Textile Shop API",
+    "_postman_id": "8a9c5314-a912-4d3b-9dfb-a4f3a8f71201",
+    "description": "Textile Shop API kolleksiya: order/payment/search/excel/history endpointlar.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "System Health",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/system/health"
+      }
+    },
+    {
+      "name": "Advanced Product Search",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/products/search/advanced?search=ip&min_price=1000&max_price=1000000&limit=50"
+      }
+    },
+    {
+      "name": "Order Search",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic {{basic_auth}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/order/search?status_q=yangi&date_from=2026-01-01&date_to=2026-12-31"
+      }
+    },
+    {
+      "name": "Click Complete",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "X-Signature",
+            "value": "{{click_signature}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"order_id\": 1, \"transaction_id\": \"tx_001\", \"success\": true}"
+        },
+        "url": "{{base_url}}/payments/click/complete"
+      }
+    },
+    {
+      "name": "Payme Perform",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "X-Signature",
+            "value": "{{payme_signature}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"order_id\": 1, \"transaction_id\": \"tx_001\", \"success\": true}"
+        },
+        "url": "{{base_url}}/payments/payme/perform"
+      }
+    },
+    {
+      "name": "Excel Template Download",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic {{basic_auth}}",
+            "type": "text"
+          }
+        ],
+        "url": "{{base_url}}/excel/products/template"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://textile.okach-admin.uz"
+    },
+    {
+      "key": "basic_auth",
+      "value": "base64(username:password)"
+    },
+    {
+      "key": "click_signature",
+      "value": ""
+    },
+    {
+      "key": "payme_signature",
+      "value": ""
+    }
+  ]
+}
