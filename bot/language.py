@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery, ReplyKeyboardRemove
 
 from bot.buttuns.inline import main_menu, contact
 from bot.state.states import Contact
-from models import BotUser
+
 
 language_router = Router()
 

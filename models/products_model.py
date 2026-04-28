@@ -53,9 +53,9 @@ class Product(BaseModel):
     product_details: Mapped[list['ProductDetail']] = relationship('ProductDetail', lazy='selectin',back_populates='product')
     product_photos: Mapped['ProductPhoto'] = relationship('ProductPhoto', lazy='selectin', back_populates='product')
 
-    order_item: Mapped[list['OrderItem']] = relationship('OrderItem', back_populates='product')
-    category: Mapped[list['Category']] = relationship('Category', back_populates='products')
-    collection: Mapped[list['Collection']] = relationship('Category', back_populates='products')
+    order_items: Mapped[list['OrderItem']] = relationship('OrderItem', back_populates='product')
+    category: Mapped['Category'] = relationship('Category', back_populates='products')
+    collection: Mapped['Collection'] = relationship('Collection', back_populates='products')
 
     @classmethod
     async def get_products_category(cls, category_id):

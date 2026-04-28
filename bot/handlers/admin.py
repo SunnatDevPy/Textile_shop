@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery, Message
 
 from bot.buttuns.inline import shops_button, shop_setting_menu
 from bot.state.states import SendTextState
-from models import AdminPanelUser, Shop
+from models import AdminPanelUser
 
 admin_router = Router()
 
