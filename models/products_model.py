@@ -119,6 +119,7 @@ class Order(CreatedBaseModel):
     class Payment(str, Enum):
         CLICK = "click"
         PAYME = "payme"
+        CASH = "cash"
 
     first_name: Mapped[str] = mapped_column(String)
     last_name: Mapped[str] = mapped_column(String)

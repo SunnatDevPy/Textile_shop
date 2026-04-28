@@ -1,346 +1,805 @@
 # Textile Shop API (FastAPI)
 
-Ushbu loyiha `Textile Shop` uchun backend API hisoblanadi.  
-Backend `FastAPI + PostgreSQL` asosida yozilgan va frontend bilan REST API orqali ishlaydi.
+Ushbu loyiha `Textile Shop` uchun backend API.
 
-## Nimalar bor
+- Stack: `FastAPI + PostgreSQL + SQLAlchemy (async)`
+- Swagger: `/docs`
+- Base URL (local): `http://localhost:8000`
 
-- Mahsulotlar (`products`) CRUD
-- Mahsulot ichki bo'limlari:
-  - `product-photos`
-  - `product-items` (variantlar: rang, o'lcham, soni)
-  - `product-details`
-- Kategoriyalar:
-  - `categories`
-  - `collections`
-  - `color`
-  - `size`
-- Bannerlar (`banners`)
-- Buyurtmalar (`order`)
-- To'lov integratsiyasi (`/payments/...`) — Click va Payme callbacklari
-- Excel import (`/excel/products/import`) — product create/update
-- Tarix va loglar (`/history/...`) — product/order/log history
-- Kengaytirilgan search (`/products/search/advanced`, `/order/search`)
-- Postman collection (`postman/Textile_shop.postman_collection.json`)
-- OpenAPI client yo'riqnomasi (`OPENAPI_CLIENT.md`)
-- Integration testlar (`tests/integration/...`)
-- Operator/Admin boshqaruvi (`/panel/...`)
+---
+
+## 1) Backend qisqacha
+
+Backend quyidagilarni boshqaradi:
+
+- Mahsulotlar (`/products`)
+- Mahsulot subresurslari (`/product-photos`, `/product-items`, `/product-details`)
+- Kataloglar (`/categories`, `/collections`, `/color`, `/size`)
+- Bannerlar (`/banners`)
+- Buyurtmalar (`/order`)
+- To'lov callbacklari (`/payments/*`)
+- Foydalanuvchi paneli (`/panel/*`)
+- Excel import (`/excel/*`)
+- Tarix (`/history/*`)
+- Tizim endpointlari (`/system/*`)
 - Frontend bootstrap (`/frontend/bootstrap`)
-- Tizim tekshiruv endpointlari (`/system/health`, `/system/ready`)
-- Swagger hujjat: `/docs`
 
-## Texnologiyalar
+---
 
-- `FastAPI`
-- `SQLAlchemy (async)`
-- `PostgreSQL`
-- `Pydantic v2`
-- `Docker / Docker Compose`
+## 2) Auth va ruxsatlar
 
-## Tez ishga tushirish (Docker)
+Loyihada amaldagi auth turi: **HTTP Basic Auth**.
 
-### 1) `.env` tayyorlash
+### Kimlar bor
 
-Loyihada `.env` bo'lishi kerak.
+- `super admin` (`.env` dagi `ADMIN_USERNAME` + `ADMIN_PASS`)
+- `admin` (DB dagi `AdminUser`)
+- `operator` (DB dagi `AdminUser`)
 
-Minimal kerakli qiymatlar:
+### Endpointlarda auth belgisi
 
-```env
-DB_NAME=textile
-DB_USER=postgres
-DB_PASS=1
-DB_HOST=db
-DB_PORT=5432
-SECRET_KEY=change_me
-ADMIN_USERNAME=admin
-ADMIN_PASS=$2b$12$your_bcrypt_hash
-ADMIN=123456789
+- `Public` - auth kerak emas
+- `Admin` - faqat `admin`
+- `Staff` - `admin` yoki `operator`
+- `Super admin` - faqat `.env` dagi super admin
+
+---
+
+## 3) Javob formati (muhim)
+
+Loyihada ikki xil javob uslubi bor.
+
+### A) Standart wrapper (`ok_response`)
+
+```json
+{
+  "ok": true,
+  "data": {},
+  "meta": {},
+  "error": null
+}
 ```
 
-`ADMIN_PASS` oddiy matn emas, `bcrypt` hash bo'lishi shart.
+### B) To'g'ridan-to'g'ri obyekt
 
-### 2) Konteynerlarni ko'tarish
+Ba'zi endpointlar to'g'ridan-to'g'ri obyekt/list qaytaradi, masalan:
 
-```bash
-docker compose up -d --build
+```json
+{
+  "ok": true,
+  "id": 12
+}
 ```
 
-### 3) Tekshirish
+yoki
 
-```bash
-docker compose ps
-docker compose logs -f app
+```json
+{
+  "photos": []
+}
 ```
 
-Swagger:
-- [http://localhost:8000/docs](http://localhost:8000/docs)
+### Xatolik
 
-## Frontend dasturchi uchun ulanish yo'riqnomasi
+Xatoliklar odatda `HTTPException` orqali qaytadi (`detail` maydoni bilan), masalan 400/401/403/404/409/500.
 
-## 1) Base URL
+---
 
-Lokal:
-- `http://localhost:8000`
+## 4) API hujjati - har bir URL nima qiladi
 
-Prod:
-- `https://textile.okach-admin.uz/`
+Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 
-## 2) Kontent turlari
+---
 
-- Ko'p create/update endpointlar `Form Data` qabul qiladi.
-- Rasm yuklash endpointlarida `multipart/form-data` ishlating.
-- Buyurtma endpointi (`POST /order`) esa `JSON` qabul qiladi.
+## 4.1 System API (`/system`) - Public
 
-## 3) Auth (juda muhim)
+### `GET /system/health`
+- Vazifa: API ishlayotganini tekshiradi.
+- Yuboriladi: hech narsa.
+- Qaytadi:
+```json
+{ "ok": true, "service": "textile-shop-api" }
+```
 
-Loyihada **faqat HTTP Basic Auth** bor (JWT o'chirilgan).
+### `GET /system/ready`
+- Vazifa: DB ulanishini tekshiradi.
+- Yuboriladi: hech narsa.
+- Qaytadi:
+```json
+{ "ok": true, "database": "connected" }
+```
 
-- Header:
-  - `Authorization: Basic base64(username:password)`
-- Login ma'lumotlari:
-  - `super admin` (`.env` dagi `ADMIN_USERNAME` / `ADMIN_PASS`) — operator/admin yaratadi
-  - `admin/operator` — DB dagi `AdminUser` orqali kiradi (`username + operator_code`)
+### `GET /system/auth-mode`
+- Vazifa: autentifikatsiya rejimini ko'rsatadi.
+- Yuboriladi: hech narsa.
+- Qaytadi:
+```json
+{ "auth": "basic", "jwt_enabled": false }
+```
 
-### Rollar
+### `POST /system/dev/seed-fake` (Super admin, vaqtinchalik)
+- Vazifa: test uchun fake ma'lumotlar yaratadi (`categories`, `collections`, `colors`, `sizes`, `products`, `product_items`, `product_details`, `orders`, `order_items`).
+- Query:
+  - `n` (default `3`, min `1`, max `20`) - har bir asosiy entity soni.
+  - `clear_before` (bool, default `false`) - `true` bo'lsa, oldin eski ma'lumotlarni tozalaydi.
+- Auth: Basic (`super admin` `.env` credentials)
+- Qaytadi (`ok_response`):
+```json
+{
+  "ok": true,
+  "data": {
+    "message": "Fake data yaratildi",
+    "clear_before": true,
+    "cleared": {
+      "order_items": 12,
+      "orders": 12,
+      "product_details": 8,
+      "product_photos": 0,
+      "product_items": 8,
+      "products": 8,
+      "sizes": 8,
+      "colors": 8,
+      "collections": 8,
+      "categories": 8
+    },
+    "created": {
+      "categories": 3,
+      "collections": 3,
+      "colors": 3,
+      "sizes": 3,
+      "products": 3,
+      "product_items": 3,
+      "product_details": 3,
+      "product_photos": 0,
+      "orders": 3,
+      "order_items": 3
+    },
+    "note": "Bu endpoint vaqtinchalik (dev) uchun."
+  },
+  "meta": {},
+  "error": null
+}
+```
 
-- `super admin`:
-  - `POST /panel/operators` orqali user yaratadi
-- `admin`:
-  - katalogni boshqaradi (create/edit/delete)
-  - operatorlarni ko'radi/tahrirlaydi
-  - buyurtmalarni boshqaradi
-- `operator`:
-  - buyurtmalarni ko'radi va statusni boshqaradi
-  - katalogda delete (va hozirgi sozlamada create/edit ham) qilmaydi
+---
 
-## 4) Frontend uchun eng kerakli endpointlar
+## 4.2 Frontend API (`/frontend`) - Public
 
-### Public endpointlar
+### `GET /frontend/bootstrap`
+- Vazifa: frontend uchun boshlang'ich ma'lumotlarni bitta so'rovda beradi.
+- Query:
+  - `include_inactive` (bool, default: `false`)
+- Qaytadi:
+```json
+{
+  "ok": true,
+  "banners": [],
+  "categories": [],
+  "collections": [],
+  "colors": [],
+  "sizes": [],
+  "products": [],
+  "product_items": [],
+  "product_photos": [],
+  "product_details": []
+}
+```
 
-- `GET /products` - barcha mahsulotlar
-- `GET /products/{product_id}` - bitta mahsulot
-- `GET /products/search?search=...&category_id=...` - qidiruv/filter
-- `GET /products/search/advanced?...` - kengaytirilgan qidiruv/filter (`collection_id`, `is_active`, `min_price`, `max_price`)
-- `GET /products/category/{category_id}` - kategoriya bo'yicha
-- `GET /banners/` - bannerlar
-- `GET /categories` - kategoriyalar
-- `GET /collections/` - kolleksiyalar
-- `GET /color/` - ranglar
-- `GET /size/` - o'lchamlar
-- `GET /product-photos?product_id=...`
-- `GET /product-items?product_id=...`
-- `GET /product-details?product_id=...`
-- `GET /frontend/bootstrap` - frontend uchun bir so'rovda asosiy ma'lumotlar
+---
 
-### Buyurtma
+## 4.3 Products API (`/products`)
 
-- `POST /order` - buyurtma yaratish (JSON)
-- `GET /order` - buyurtmalar ro'yxati (operator/admin)
-- `GET /order/search?...` - buyurtma qidirish (`status`, `payment`, `contact`, `date_from`, `date_to`)
-- `GET /order/{order_id}` - buyurtma detali (operator/admin)
-- `POST /order/{order_id}/confirm-payment` - to'lov tasdig'i va stock kamaytirish (operator/admin)
-- `PATCH /order/{order_id}/status` - status o'zgartirish (operator/admin)
+### `GET /products` (Public)
+- Vazifa: barcha mahsulotlar ro'yxati.
+- Yuboriladi: hech narsa.
+- Qaytadi: `Product[]` (to'g'ridan-to'g'ri list).
 
-### Click va Payme (dokument topshirish oldidan test API)
+### `GET /products/search` (Public)
+- Vazifa: oddiy qidiruv/filter.
+- Query:
+  - `search` (string, ixtiyoriy)
+  - `category_id` (int, ixtiyoriy)
+- Qaytadi (`ok_response`):
+```json
+{ "ok": true, "data": [], "meta": { "count": 0 }, "error": null }
+```
 
-- `POST /payments/click/prepare` - Click uchun orderni tekshirish
-- `POST /payments/click/complete` - Click to'lovini yakunlash (`to'landi` + stock kamaytirish)
-- `POST /payments/payme/check` - Payme uchun orderni tekshirish
-- `POST /payments/payme/perform` - Payme to'lovini yakunlash (`to'landi` + stock kamaytirish)
+### `GET /products/search/advanced` (Public)
+- Vazifa: kengaytirilgan filter.
+- Query:
+  - `search`, `category_id`, `collection_id`, `is_active`, `min_price`, `max_price`, `limit` (default 100, max 500)
+- Qaytadi (`ok_response`): `data = Product[]`, `meta.count`.
 
-Eslatma:
-- Bu endpointlar callback/workflow uchun tayyorlangan.
-- Real prodga chiqishda Click/Payme imzo (signature) tekshiruvi qo'shilishi kerak.
-- Hozir API'da `X-Signature` orqali HMAC tekshirish qo'llab-quvvatlanadi (secret bo'lsa majburiy).
-- Callback endpointlar uchun IP whitelist va rate limit bor.
+### `GET /products/category/{category_id}` (Public)
+- Vazifa: kategoriya bo'yicha mahsulotlar.
+- Yuboriladi: `category_id` (path).
+- Qaytadi: `Product[]`.
 
-### Excel orqali product import/create
+### `GET /products/{product_id}` (Public)
+- Vazifa: bitta mahsulot.
+- Yuboriladi: `product_id` (path).
+- Qaytadi:
+```json
+{ "product": { } }
+```
+- 404: `Product topilmadi`.
 
-- `GET /excel/products/template` (admin)
-  - excel import uchun tayyor shablon faylni yuklab beradi
-- `POST /excel/products/import` (admin)
-- `multipart/form-data` orqali `.xlsx` yuboriladi
+### `POST /products` (Admin)
+- Vazifa: yangi mahsulot yaratish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi (form):
+  - `category_id` (int, required)
+  - `collection_id` (int, required)
+  - `name_uz`, `name_ru`, `name_eng` (str, required)
+  - `description_uz`, `description_ru`, `description_eng` (str, required)
+  - `price` (int, required)
+  - `is_active` (bool, optional, default `true`)
+  - `photo` (file, optional, faqat image)
+- Qaytadi:
+```json
+{ "ok": true, "id": 123 }
+```
+
+### `PATCH /products/{product_id}` (Admin)
+- Vazifa: mahsulotni qisman yangilash.
+- Content-Type: `multipart/form-data`
+- Yuboriladi (ixtiyoriy form fieldlar):
+  - `category_id`, `collection_id`, `name_uz`, `name_ru`, `name_eng`, `description_uz`, `description_ru`, `description_eng`, `price`, `is_active`, `photo`
+- Qaytadi:
+```json
+{ "ok": true }
+```
+- 400: "O'zgartirish uchun ma'lumot yo'q"
+
+### `DELETE /products/{product_id}` (Admin)
+- Vazifa: mahsulotni o'chirish.
+- Yuboriladi: `product_id` (path).
+- Qaytadi:
+```json
+{ "ok": true }
+```
+
+---
+
+## 4.4 Product Photos API (`/product-photos`)
+
+### `GET /product-photos` (Public)
+- Vazifa: product rasmlar ro'yxati.
+- Query:
+  - `product_id` (int, ixtiyoriy)
+- Qaytadi: `ProductPhoto[]`.
+
+### `GET /product-photos/{photo_id}` (Public)
+- Vazifa: bitta rasm.
+- Qaytadi: `ProductPhoto`.
+
+### `POST /product-photos` (Admin)
+- Vazifa: mahsulotga rasm qo'shish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `product_id` (int, required)
+  - `photo` (file, required, image)
+- Qaytadi:
+```json
+{ "ok": true, "id": 1 }
+```
+
+### `PATCH /product-photos/{photo_id}` (Admin)
+- Vazifa: rasmni yoki product bog'lanishini yangilash.
+- Content-Type: `multipart/form-data`
+- Yuboriladi (ixtiyoriy):
+  - `product_id` (int)
+  - `photo` (file)
+- Qaytadi: `{ "ok": true }`
+
+### `DELETE /product-photos/{photo_id}` (Admin)
+- Vazifa: rasmni o'chirish.
+- Qaytadi: `{ "ok": true }`
+
+---
+
+## 4.5 Product Items API (`/product-items`)
+
+### `GET /product-items` (Public)
+- Vazifa: mahsulot variantlari listi.
+- Query:
+  - `product_id` (int, ixtiyoriy)
+- Qaytadi: `ProductItems[]`.
+
+### `GET /product-items/{item_id}` (Public)
+- Vazifa: bitta variant.
+- Qaytadi: `ProductItems`.
+
+### `POST /product-items` (Admin)
+- Vazifa: yangi variant yaratish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `product_id` (int)
+  - `color_id` (int)
+  - `size_id` (int)
+  - `total_count` (int)
+- Qaytadi:
+```json
+{ "ok": true, "id": 1 }
+```
+
+### `PATCH /product-items/{item_id}` (Admin)
+- Vazifa: variantni qisman yangilash.
+- Content-Type: `multipart/form-data`
+- Yuboriladi (ixtiyoriy):
+  - `product_id`, `color_id`, `size_id`, `total_count`
+- Qaytadi: `{ "ok": true }`
+
+### `DELETE /product-items/{item_id}` (Admin)
+- Vazifa: variantni o'chirish.
+- Qaytadi: `{ "ok": true }`
+
+---
+
+## 4.6 Product Details API (`/product-details`)
+
+### `GET /product-details` (Public)
+- Vazifa: mahsulot tafsilotlari listi.
+- Query:
+  - `product_id` (int, ixtiyoriy)
+- Qaytadi: `ProductDetail[]`.
+
+### `GET /product-details/{detail_id}` (Public)
+- Vazifa: bitta tafsilot.
+- Qaytadi: `ProductDetail`.
+
+### `POST /product-details` (Admin)
+- Vazifa: tafsilot qo'shish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `product_id` (int)
+  - `name_uz`, `name_ru`, `name_eng` (str)
+- Qaytadi:
+```json
+{ "ok": true, "id": 1 }
+```
+
+### `PATCH /product-details/{detail_id}` (Admin)
+- Vazifa: tafsilotni qisman yangilash.
+- Content-Type: `multipart/form-data`
+- Yuboriladi (ixtiyoriy):
+  - `product_id`, `name_uz`, `name_ru`, `name_eng`
+- Qaytadi: `{ "ok": true }`
+
+### `DELETE /product-details/{detail_id}` (Admin)
+- Vazifa: tafsilotni o'chirish.
+- Qaytadi: `{ "ok": true }`
+
+---
+
+## 4.7 Categories API (`/categories`)
+
+### `GET /categories` (Public)
+- Vazifa: kategoriyalar ro'yxati.
+- Qaytadi: `Category[]`.
+
+### `GET /categories/{category_id}` (Public)
+- Vazifa: bitta kategoriya.
+- Qaytadi: `Category`.
+
+### `POST /categories` (Admin)
+- Vazifa: kategoriya yaratish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi (kamida bittasi):
+  - `name_uz`, `name_ru`, `name_eng`
+- Qaytadi:
+```json
+{ "ok": true, "data": { } }
+```
+
+### `PATCH /categories/{category_id}` (Admin)
+- Vazifa: kategoriyani yangilash.
+- Content-Type: `multipart/form-data`
+- Yuboriladi (ixtiyoriy):
+  - `name_uz`, `name_ru`, `name_eng`
+- Qaytadi: `{ "ok": true, "data": { } }`
+
+### `DELETE /categories/{category_id}` (Admin)
+- Vazifa: kategoriyani o'chirish.
+- Qaytadi: `{ "ok": true }`
+
+---
+
+## 4.8 Collections API (`/collections`)
+
+### `GET /collections/` (Public)
+- Vazifa: kolleksiyalar ro'yxati.
+- Qaytadi: `Collection[]`.
+
+### `GET /collections/{collection_id}` (Public)
+- Vazifa: bitta kolleksiya.
+- Qaytadi: `Collection`.
+
+### `POST /collections/` (Admin)
+- Vazifa: kolleksiya yaratish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `name_uz`, `name_ru`, `name_eng`
+- Qaytadi: `{ "ok": true, "data": { } }`
+
+### `PATCH /collections/{collection_id}` (Admin)
+- Vazifa: kolleksiyani yangilash.
+- Content-Type: `multipart/form-data`
+- Yuboriladi (ixtiyoriy):
+  - `name_uz`, `name_ru`, `name_eng`
+- Qaytadi: `{ "ok": true, "data": { } }`
+
+### `DELETE /collections/{collection_id}` (Admin)
+- Vazifa: kolleksiyani o'chirish.
+- Qaytadi: `{ "ok": true }`
+
+---
+
+## 4.9 Color API (`/color`)
+
+### `GET /color/` (Public)
+- Vazifa: ranglar ro'yxati.
+- Qaytadi: `Color[]`.
+
+### `GET /color/{color_id}` (Public)
+- Vazifa: bitta rang.
+- Qaytadi: `Color`.
+
+### `POST /color/` (Admin)
+- Vazifa: rang yaratish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `name_uz`, `name_ru`, `name_eng`
+- Qaytadi: `{ "ok": true, "data": { } }`
+
+### `PATCH /color/{color_id}` (Admin)
+- Vazifa: rangni yangilash.
+- Content-Type: `multipart/form-data`
+- Yuboriladi (ixtiyoriy):
+  - `name_uz`, `name_ru`, `name_eng`
+- Qaytadi: `{ "ok": true, "data": { } }`
+
+### `DELETE /color/{color_id}` (Admin)
+- Vazifa: rangni o'chirish.
+- Qaytadi: `{ "ok": true }`
+
+---
+
+## 4.10 Size API (`/size`)
+
+### `GET /size/` (Public)
+- Vazifa: o'lchamlar ro'yxati.
+- Qaytadi: `Size[]`.
+
+### `GET /size/{size_id}` (Public)
+- Vazifa: bitta o'lcham.
+- Qaytadi: `Size`.
+
+### `POST /size/` (Admin)
+- Vazifa: o'lcham yaratish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `name` (str)
+- Qaytadi: `{ "ok": true, "data": { } }`
+
+### `PATCH /size/{size_id}` (Admin)
+- Vazifa: o'lchamni yangilash.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `name` (str)
+- Qaytadi: `{ "ok": true, "data": { } }`
+
+### `DELETE /size/{size_id}` (Admin)
+- Vazifa: o'lchamni o'chirish.
+- Qaytadi: `{ "ok": true }`
+
+---
+
+## 4.11 Banners API (`/banners`)
+
+### `GET /banners/` (Public)
+- Vazifa: bannerlar ro'yxati.
+- Qaytadi:
+```json
+{ "photos": [] }
+```
+
+### `POST /banners/` (Admin)
+- Vazifa: banner rasmi qo'shish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `photo` (file, required)
+- Qaytadi: `{ "ok": true }`
+
+### `DELETE /banners/{photo_id}` (Admin)
+- Vazifa: bannerni o'chirish.
+- Qaytadi: `{ "ok": true }`
+
+---
+
+## 4.12 Orders API (`/order`)
+
+### `GET /order` (Staff)
+- Vazifa: buyurtmalar ro'yxati.
+- Yuboriladi: auth header.
+- Qaytadi (`ok_response`): `data = Order[]`.
+
+### `GET /order/search` (Staff)
+- Vazifa: buyurtmalarni filter/qidiruv.
+- Query:
+  - `order_id` (int)
+  - `status_q` (string)
+  - `payment` (string)
+  - `contact` (string)
+  - `first_name` (string)
+  - `date_from` (ISO datetime)
+  - `date_to` (ISO datetime)
+  - `limit` (default 200, max 1000)
+- Qaytadi (`ok_response`): `data = Order[]`, `meta.count`.
+
+### `GET /order/{order_id}` (Staff)
+- Vazifa: bitta buyurtma + order itemlar.
+- Qaytadi (`ok_response`): `data = Order`.
+
+### `POST /order` (Public)
+- Vazifa: yangi buyurtma yaratish.
+- Content-Type: `application/json`
+- `payment` qiymati: `click`, `payme`, `cash`
+- Yuboriladi:
+```json
+{
+  "first_name": "Ali",
+  "last_name": "Valiyev",
+  "country": "Uzbekistan",
+  "address": "Chilonzor 10",
+  "town_city": "Tashkent",
+  "contact": "+998901234567",
+  "postcode_zip": 100000,
+  "payment": "cash",
+  "items": [
+    { "product_id": 1, "product_item_id": 10, "count": 2 }
+  ],
+  "email_address": "optional@mail.com",
+  "state_county": "optional"
+}
+```
+- Qaytadi (`ok_response`):
+```json
+{
+  "ok": true,
+  "data": {
+    "order_id": 1,
+    "status": "yangi",
+    "order_items": []
+  },
+  "meta": {},
+  "error": null
+}
+```
+
+### `POST /order/{order_id}/confirm-payment` (Staff)
+- Vazifa: to'lovni tasdiqlaydi, ombor sonini kamaytiradi, statusni yangilaydi.
+- Yuboriladi:
+  - `order_id` (path)
+  - body (ixtiyoriy):
+```json
+{ "next_status": "to'landi" }
+```
+- Qaytadi:
+  - agar allaqachon paid bo'lsa:
+```json
+{ "ok": true, "already_paid": true, "order_id": 1 }
+```
+  - odatda (`ok_response`): `data = { order_id, status }`
+
+### `PATCH /order/{order_id}/status` (Staff)
+- Vazifa: statusni qo'lda o'zgartirish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `new_status` (str, required)
+- Qaytadi (`ok_response`): `data = { order_id, status }`
+
+Ruxsat etilgan statuslar:
+- `yangi`, `to'landi`, `jarayonda`, `tayyor`, `yetkazilmoqda`, `yetkazildi`, `bekor qilindi`
+
+---
+
+## 4.13 Payments API (`/payments`) - Public callback endpointlar
+
+`X-Signature` header ishlatilishi mumkin (`.env` da secret bo'lsa majburiy).
+
+### `POST /payments/click/prepare`
+- Vazifa: Click to'lovidan oldin orderni tekshiradi.
+- Yuboriladi:
+```json
+{ "order_id": 1 }
+```
+- Header (ixtiyoriy/konfiguratsiyaga bog'liq): `X-Signature`
+- Qaytadi (`ok_response`): `data = { order_id, status }`
+
+### `POST /payments/click/complete`
+- Vazifa: Click to'lovini yakunlaydi (`paid`) va stock kamaytiradi.
+- Yuboriladi:
+```json
+{ "order_id": 1, "transaction_id": "click_tx_1", "success": true }
+```
+- Qaytadi:
+  - `success=false` bo'lsa (`ok_response`): `{ order_id, status, success: false }`
+  - aks holda (`ok_response`): `{ ok, already_paid, order_id, status }`
+
+### `POST /payments/payme/check`
+- Vazifa: Payme uchun orderni tekshiradi.
+- Yuboriladi:
+```json
+{ "order_id": 1, "account": "optional" }
+```
+- Qaytadi (`ok_response`): `{ order_id, status }`
+
+### `POST /payments/payme/perform`
+- Vazifa: Payme to'lovini yakunlaydi (`paid`) va stock kamaytiradi.
+- Yuboriladi:
+```json
+{ "order_id": 1, "transaction_id": "payme_tx_1", "success": true }
+```
+- Qaytadi:
+  - `success=false` bo'lsa (`ok_response`): `{ order_id, status, success: false }`
+  - aks holda (`ok_response`): `{ ok, already_paid, order_id, status }`
+
+---
+
+## 4.14 Panel API (`/panel`)
+
+### `POST /panel/operators` (Super admin)
+- Vazifa: admin/operator user yaratish.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `username` (str)
+  - `operator_code` (str)
+  - `status` (`admin` yoki `operator`, default `operator`)
+  - `is_active` (bool, default `true`)
+- Qaytadi:
+```json
+{ "ok": true, "user_id": 1, "username": "john", "status": "operator" }
+```
+
+### `GET /panel/users` (Admin)
+- Vazifa: admin/operatorlar ro'yxati.
+- Qaytadi: `AdminUser[]`.
+
+### `GET /panel/me` (Staff)
+- Vazifa: login bo'lgan user profili.
+- Qaytadi: `AdminUser`.
+
+### `PATCH /panel/users/{user_id}` (Admin)
+- Vazifa: userni yangilash.
+- Content-Type: `multipart/form-data`
+- Yuboriladi (ixtiyoriy):
+  - `username`
+  - `operator_code` (yuborilsa password qayta hash qilinadi)
+  - `is_active`
+- Qaytadi: `{ "ok": true }`
+
+---
+
+## 4.15 Excel API (`/excel`)
+
+### `GET /excel/products/template` (Admin)
+- Vazifa: product import uchun `.xlsx` template yuklab beradi.
+- Qaytadi: fayl stream (`products_import_template.xlsx`).
+
+### `POST /excel/products/import` (Admin)
+- Vazifa: excel orqali product create/update.
+- Content-Type: `multipart/form-data`
+- Yuboriladi:
+  - `excel_file` (required, `.xlsx`/`.xls`)
 - Kerakli ustunlar:
-  - `id` (ixtiyoriy, bo'lsa update qiladi)
-  - `category_id`
-  - `collection_id`
+  - `category_id`, `collection_id`
   - `name_uz`, `name_ru`, `name_eng`
   - `description_uz`, `description_ru`, `description_eng`
-  - `price`
-  - `is_active`
-
-Natija:
-- nechta `created`
-- nechta `updated`
-- xatolar ro'yxati (`row`, `error`)
-
-### Tarix API (history)
-
-- `GET /history/orders?date_from=...&date_to=...`
-  - buyurtmalar tarixi (sanadan-sanagacha)
-- `GET /history/products?date_from=...&date_to=...&action=...`
-  - product o'zgarish tarixi (audit log asosida)
-- `GET /history/logs?entity=...&date_from=...&date_to=...`
-  - tizim loglari tarixi
-
-### Search API
-
-- `GET /products/search/advanced`
-  - `search`, `category_id`, `collection_id`, `is_active`, `min_price`, `max_price`, `limit`
-- `GET /order/search`
-  - `order_id`, `status_q`, `payment`, `contact`, `first_name`, `date_from`, `date_to`, `limit`
-
-### Buyurtma statuslari
-
-- `yangi`
-- `to'landi`
-- `jarayonda`
-- `tayyor`
-- `yetkazilmoqda`
-- `yetkazildi`
-- `bekor qilindi`
-
-Muhim:
-- `yangi -> to'landi` yoki `yangi -> jarayonda` bo'lsa, ombordagi son avtomatik kamayadi.
-- `confirm-payment` ham stockni kamaytiradi (takror chaqirsa qayta kamaytirmaydi).
-- status transition qoidalari bor, noto'g'ri transition bloklanadi.
-
-### Admin endpointlar (Basic auth talab qiladi)
-
-- `POST/PATCH/DELETE /products...`
-- `POST/PATCH/DELETE /product-photos...`
-- `POST/PATCH/DELETE /product-items...`
-- `POST/PATCH/DELETE /product-details...`
-- `POST/PATCH/DELETE /categories...`
-- `POST/PATCH/DELETE /collections...`
-- `POST/PATCH/DELETE /color...`
-- `POST/PATCH/DELETE /size...`
-- `POST/DELETE /banners...`
-- `POST /panel/operators` (faqat super admin)
-- `GET /panel/users`, `PATCH /panel/users/{user_id}` (admin)
-- `GET /panel/me` (admin/operator)
-
-## Frontenddan so'rov namunalari
-
-### 1) Public mahsulotlar
-
-```js
-const res = await fetch("http://localhost:8000/products");
-const data = await res.json();
-```
-
-### 2) Basic auth bilan create (misol)
-
-```js
-const username = "admin";
-const password = "1111";
-const basic = btoa(`${username}:${password}`);
-
-const form = new FormData();
-form.append("name_uz", "Yangi kategoriya");
-form.append("name_ru", "Новая категория");
-form.append("name_eng", "New category");
-
-const res = await fetch("http://localhost:8000/categories", {
-  method: "POST",
-  headers: {
-    Authorization: `Basic ${basic}`,
+  - `price`, `is_active`
+  - `id` (ixtiyoriy; bo'lsa update)
+- Qaytadi (`ok_response`):
+```json
+{
+  "ok": true,
+  "data": {
+    "created": 10,
+    "updated": 3,
+    "errors": [
+      { "row": 5, "error": "..." }
+    ]
   },
-  body: form,
-});
+  "meta": { "errors_count": 1 },
+  "error": null
+}
 ```
 
-### 3) Frontend bootstrap (bir so'rovda)
+---
 
-```js
-const res = await fetch("http://localhost:8000/frontend/bootstrap");
-const data = await res.json();
-```
+## 4.16 History API (`/history`) - Staff
 
-### 4) Click callback misol
+### `GET /history/orders`
+- Vazifa: buyurtmalar tarixini sana oralig'ida olish.
+- Query:
+  - `date_from` (ISO)
+  - `date_to` (ISO)
+  - `limit` (1..2000, default 200)
+- Qaytadi (`ok_response`): `data = Order[]`, `meta.count`.
 
-```js
-await fetch("http://localhost:8000/payments/click/complete", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    order_id: 123,
-    transaction_id: "click_tx_001",
-    success: true
-  })
-});
-```
+### `GET /history/products`
+- Vazifa: product audit tarixi.
+- Query:
+  - `date_from` (ISO)
+  - `date_to` (ISO)
+  - `action` (masalan: `excel_create`, `excel_update`)
+  - `limit` (1..2000)
+- Qaytadi (`ok_response`): `data = AuditLog[]`, `meta.count`.
 
-### 5) Excel import misol
+### `GET /history/logs`
+- Vazifa: umumiy tizim loglari.
+- Query:
+  - `entity` (masalan: `product`, `order`, `payment`)
+  - `date_from` (ISO)
+  - `date_to` (ISO)
+  - `limit` (1..3000, default 500)
+- Qaytadi (`ok_response`): `data = AuditLog[]`, `meta.count`.
 
-```js
-const form = new FormData();
-form.append("excel_file", fileInput.files[0]);
-
-await fetch("https://textile.okach-admin.uz/excel/products/import", {
-  method: "POST",
-  headers: {
-    Authorization: `Basic ${basic}`,
+### `GET /history/stats/sales`
+- Vazifa: sanadan-sanagacha sotuv statistikasi.
+- Query:
+  - `date_from` (ISO)
+  - `date_to` (ISO)
+- Qaytadi (`ok_response`):
+```json
+{
+  "ok": true,
+  "data": {
+    "from": "2026-04-01",
+    "to": "2026-04-30",
+    "total_orders": 120,
+    "paid_orders": 95,
+    "sold_items_count": 240,
+    "sales_amount": 125000000,
+    "payment_breakdown": {
+      "click": { "orders_count": 40, "items_count": 100, "amount": 50000000 },
+      "payme": { "orders_count": 35, "items_count": 90, "amount": 45000000 },
+      "cash": { "orders_count": 20, "items_count": 50, "amount": 30000000 }
+    },
+    "currency": "UZS"
   },
-  body: form,
-});
+  "meta": {},
+  "error": null
+}
 ```
+- Eslatma:
+  - `total_orders` - intervaldagi jami buyurtma soni
+  - `paid_orders` - sotuvga kirgan buyurtmalar (`to'landi`, `jarayonda`, `tayyor`, `yetkazilmoqda`, `yetkazildi`)
+  - `sold_items_count` - sotilgan mahsulot birliklari yig'indisi
+  - `sales_amount` - sotuv summasi (`OrderItem.total` yig'indisi)
+  - `payment_breakdown` - to'lov turi bo'yicha kesim (`click`, `payme`, `cash`)
 
-## Muhim texnik eslatmalar
+---
 
-- `main.py` ichida CORS hozircha `*` ochiq turibdi. Prod uchun domenlar bilan cheklang.
-- `media/` papka statik rasm fayllar uchun ishlatiladi (`/media` orqali ochiladi).
-- App ishga tushganda jadvallar `create_all()` bilan avtomatik yaratiladi.
-- API javob formati asosiy endpointlarda standartlashgan: `{ok, data, meta, error}`.
-- Payment security env sozlamalari:
-  - `CLICK_SECRET_KEY`
-  - `PAYME_SECRET_KEY`
-  - `PAYMENT_CALLBACK_IP_WHITELIST`
-  - `RATE_LIMIT_PER_MINUTE`
+## 5) Frontendga amaliy tavsiya (UZ)
 
-## Ishlab chiqish va deploy
+- Public endpointlarda auth bermang.
+- Admin/Staff endpointlarda har doim `Authorization: Basic base64(username:password)` yuboring.
+- `POST/PATCH` katalog endpointlarida asosan `FormData` ishlating.
+- Buyurtma yaratishda (`POST /order`) faqat `application/json` ishlating.
+- Payment callbacklarda `X-Signature` (agar prod’da yoqilgan bo'lsa) to'g'ri imzo bilan yuborilsin.
 
-### Lokal ishga tushirish
+---
 
-```bash
-docker compose up -d --build
-```
-
-### To'xtatish
-
-```bash
-docker compose down
-```
-
-### API ni qayta yuklash
-
-```bash
-docker compose restart app
-```
-
-### Serverga deploy
-
-1. Kodni serverga yuklang
-2. `.env` ni prod qiymatlar bilan to'ldiring
-3. `docker compose up -d --build`
-4. Nginx orqali domen + SSL ulang
-
-Qo'shimcha: `DEPLOY_CHECKLIST.md`
-
-## Frontend integratsiya checklist
-
-- [ ] `BASE_URL` ni to'g'ri qo'ydim
-- [ ] Public endpointlar ishlayapti
-- [ ] Basic auth bilan admin endpointlar ishlayapti
-- [ ] FormData yuboriladigan joylar FormData bilan ketayapti
-- [ ] Rasm upload `multipart/form-data` bilan ishlayapti
-- [ ] `POST /order` JSON bilan ishlayapti
-- [ ] Prodga chiqqanda CORS domenlar bilan cheklangan
-
-## Testlar
-
-Integration testlar:
+## 6) Test
 
 ```bash
 pytest tests/integration -q
 ```
+
+---
+
+## 7) Qo'shimcha
+
+- OpenAPI client: `OPENAPI_CLIENT.md`
+- Deploy checklist: `DEPLOY_CHECKLIST.md`
+- Postman collection: `postman/Textile_shop.postman_collection.json`

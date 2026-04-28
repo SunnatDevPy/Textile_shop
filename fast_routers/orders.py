@@ -96,7 +96,7 @@ class CreateOrderPayload(BaseModel):
     town_city: str
     contact: str
     postcode_zip: int
-    payment: str = Field(..., description="click yoki payme")
+    payment: str = Field(..., description="click, payme yoki cash")
     items: list[OrderLineIn]
     email_address: Optional[str] = None
     state_county: Optional[str] = None
@@ -176,13 +176,18 @@ async def get_order(order_id: int, _: StaffAuth):
 async def create_order(request: Request, payload: CreateOrderPayload):
     enforce_rate_limit(request, scope="order_create")
     pay = payload.payment.strip().lower()
-    if pay not in (Order.Payment.CLICK.value, Order.Payment.PAYME.value):
+    if pay not in (Order.Payment.CLICK.value, Order.Payment.PAYME.value, Order.Payment.CASH.value):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="To'lov turi faqat 'click' yoki 'payme' bo'lishi mumkin",
+            detail="To'lov turi faqat 'click', 'payme' yoki 'cash' bo'lishi mumkin",
         )
 
-    payment_enum = Order.Payment.CLICK if pay == Order.Payment.CLICK.value else Order.Payment.PAYME
+    if pay == Order.Payment.CLICK.value:
+        payment_enum = Order.Payment.CLICK
+    elif pay == Order.Payment.PAYME.value:
+        payment_enum = Order.Payment.PAYME
+    else:
+        payment_enum = Order.Payment.CASH
 
     if not payload.items:
         raise HTTPException(
