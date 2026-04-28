@@ -38,6 +38,12 @@ class Configuration:
     PAYME_SECRET_KEY: str = os.getenv('PAYME_SECRET_KEY', '')
     PAYMENT_CALLBACK_IP_WHITELIST: str = os.getenv('PAYMENT_CALLBACK_IP_WHITELIST', '')
     RATE_LIMIT_PER_MINUTE: int = int(os.getenv('RATE_LIMIT_PER_MINUTE', '120'))
+    SMTP_ENABLED: bool = os.getenv('SMTP_ENABLED', 'false').lower() in {'1', 'true', 'yes', 'on'}
+    SMTP_HOST: str = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+    SMTP_PORT: int = int(os.getenv('SMTP_PORT', '465'))
+    SMTP_USER: str = os.getenv('SMTP_USER', '')
+    SMTP_PASSWORD: str = os.getenv('SMTP_PASSWORD', '')
+    SMTP_FROM_EMAIL: str = os.getenv('SMTP_FROM_EMAIL', os.getenv('SMTP_USER', ''))
 
 # class CustomFileSystemStorage(FileSystemStorage):
 #

@@ -8,6 +8,7 @@ from config import conf
 from models import Order, OrderItem, ProductItems
 from models.database import db
 from utils.audit import write_audit_log
+from utils.notifications import send_order_status_email
 from utils.response import ok_response
 from utils.security import enforce_ip_whitelist, enforce_rate_limit, verify_hmac_signature
 
@@ -67,6 +68,12 @@ async def _mark_order_as_paid(order: Order, next_status: str = Order.StatusOrder
             .values(status=next_status)
         )
         await db.commit()
+        await send_order_status_email(
+            to_email=order.email_address,
+            order_id=order.id,
+            old_status=current,
+            new_status=next_status,
+        )
     except HTTPException:
         await db.rollback()
         raise

@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Textile Admin Panel</title>
+  <link rel="stylesheet" href="/admin/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Textile Admin Panel</h1>
+    <div class="auth-row">
+      <input id="baseUrl" placeholder="Base URL (default: current origin)" />
+      <input id="username" placeholder="Basic username" />
+      <input id="password" type="password" placeholder="Basic password / operator_code" />
+      <button id="saveAuthBtn">Save Auth</button>
+      <button id="checkMeBtn">Check /panel/me</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <button class="tab-btn active" data-tab="dashboardTab">Dashboard</button>
+      <button class="tab-btn" data-tab="ordersTab">Orders</button>
+      <button class="tab-btn" data-tab="productsTab">Products</button>
+      <button class="tab-btn" data-tab="lookupsTab">Lookups</button>
+      <button class="tab-btn" data-tab="panelTab">Panel Users</button>
+      <button class="tab-btn" data-tab="historyTab">History</button>
+      <button class="tab-btn" data-tab="paymentsTab">Payments Test</button>
+      <button class="tab-btn" data-tab="excelTab">Excel</button>
+    </aside>
+
+    <section class="content">
+      <div id="statusLine" class="status-line">Ready.</div>
+
+      <div id="dashboardTab" class="tab active">
+        <h2>Dashboard</h2>
+        <div class="actions">
+          <button id="loadHealthBtn">Load Health + Ready</button>
+          <button id="loadDashBtn">Load Sales Dashboard</button>
+          <button id="loadBootstrapBtn">Load Frontend Bootstrap</button>
+        </div>
+        <pre id="dashboardOut" class="output"></pre>
+      </div>
+
+      <div id="ordersTab" class="tab">
+        <h2>Orders</h2>
+        <div class="grid2">
+          <div class="card">
+            <h3>List / Search</h3>
+            <div class="actions">
+              <button id="listOrdersBtn">GET /order</button>
+            </div>
+            <form id="searchOrdersForm" class="form">
+              <input name="order_id" placeholder="order_id" />
+              <input name="status_q" placeholder="status_q (yangi, to'landi...)" />
+              <input name="payment" placeholder="payment (click/payme/cash)" />
+              <input name="contact" placeholder="contact" />
+              <button type="submit">GET /order/search</button>
+            </form>
+          </div>
+          <div class="card">
+            <h3>Status Actions</h3>
+            <form id="updateStatusForm" class="form">
+              <input name="order_id" required placeholder="order_id" />
+              <input name="new_status" required placeholder="new_status" />
+              <button type="submit">PATCH /order/{id}/status</button>
+            </form>
+            <form id="confirmPaymentForm" class="form">
+              <input name="order_id" required placeholder="order_id" />
+              <input name="next_status" placeholder="next_status (optional)" />
+              <button type="submit">POST /order/{id}/confirm-payment</button>
+            </form>
+          </div>
+        </div>
+        <pre id="ordersOut" class="output"></pre>
+      </div>
+
+      <div id="productsTab" class="tab">
+        <h2>Products</h2>
+        <div class="grid2">
+          <div class="card">
+            <h3>Read APIs</h3>
+            <div class="actions">
+              <button id="listProductsBtn">GET /products</button>
+              <button id="searchProductsBtn">GET /products/search</button>
+              <button id="listItemsBtn">GET /product-items</button>
+              <button id="listDetailsBtn">GET /product-details</button>
+              <button id="listPhotosBtn">GET /product-photos</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Create Product</h3>
+            <form id="createProductForm" class="form">
+              <input name="category_id" required placeholder="category_id" />
+              <input name="collection_id" required placeholder="collection_id" />
+              <input name="name_uz" required placeholder="name_uz" />
+              <input name="name_ru" required placeholder="name_ru" />
+              <input name="name_eng" required placeholder="name_eng" />
+              <input name="description_uz" required placeholder="description_uz" />
+              <input name="description_ru" required placeholder="description_ru" />
+              <input name="description_eng" required placeholder="description_eng" />
+              <input name="price" required placeholder="price" />
+              <input name="is_active" placeholder="is_active (true/false)" />
+              <button type="submit">POST /products</button>
+            </form>
+          </div>
+        </div>
+        <pre id="productsOut" class="output"></pre>
+      </div>
+
+      <div id="lookupsTab" class="tab">
+        <h2>Lookups (Category / Collection / Color / Size)</h2>
+        <div class="grid2">
+          <div class="card">
+            <h3>List</h3>
+            <div class="actions">
+              <button data-list="categories" class="lookup-list-btn">GET /categories</button>
+              <button data-list="collections" class="lookup-list-btn">GET /collections</button>
+              <button data-list="color" class="lookup-list-btn">GET /color</button>
+              <button data-list="size" class="lookup-list-btn">GET /size</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Create</h3>
+            <form id="createLookupForm" class="form">
+              <select name="type">
+                <option value="categories">categories</option>
+                <option value="collections">collections</option>
+                <option value="color">color</option>
+                <option value="size">size</option>
+              </select>
+              <input name="name_uz" placeholder="name_uz" />
+              <input name="name_ru" placeholder="name_ru" />
+              <input name="name_eng" placeholder="name_eng" />
+              <input name="name" placeholder="name (size uchun)" />
+              <button type="submit">POST selected lookup</button>
+            </form>
+          </div>
+        </div>
+        <pre id="lookupsOut" class="output"></pre>
+      </div>
+
+      <div id="panelTab" class="tab">
+        <h2>Panel Users</h2>
+        <div class="grid2">
+          <div class="card">
+            <h3>Users</h3>
+            <div class="actions">
+              <button id="listUsersBtn">GET /panel/users</button>
+              <button id="meBtn">GET /panel/me</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Create Operator/Admin (super admin)</h3>
+            <form id="createOperatorForm" class="form">
+              <input name="username" required placeholder="username" />
+              <input name="operator_code" required placeholder="operator_code" />
+              <select name="status">
+                <option value="operator">operator</option>
+                <option value="admin">admin</option>
+              </select>
+              <select name="is_active">
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+              <button type="submit">POST /panel/operators</button>
+            </form>
+          </div>
+        </div>
+        <pre id="panelOut" class="output"></pre>
+      </div>
+
+      <div id="historyTab" class="tab">
+        <h2>History</h2>
+        <div class="actions">
+          <button id="historyOrdersBtn">GET /history/orders</button>
+          <button id="historyProductsBtn">GET /history/products</button>
+          <button id="historyLogsBtn">GET /history/logs</button>
+          <button id="historySalesBtn">GET /history/stats/sales</button>
+          <button id="historyDashBtn">GET /history/stats/dashboard</button>
+        </div>
+        <pre id="historyOut" class="output"></pre>
+      </div>
+
+      <div id="paymentsTab" class="tab">
+        <h2>Payments Test</h2>
+        <div class="grid2">
+          <div class="card">
+            <h3>Click</h3>
+            <form id="clickPrepareForm" class="form">
+              <input name="order_id" required placeholder="order_id" />
+              <button type="submit">POST /payments/click/prepare</button>
+            </form>
+            <form id="clickCompleteForm" class="form">
+              <input name="order_id" required placeholder="order_id" />
+              <input name="transaction_id" required placeholder="transaction_id" />
+              <select name="success">
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+              <button type="submit">POST /payments/click/complete</button>
+            </form>
+          </div>
+          <div class="card">
+            <h3>Payme</h3>
+            <form id="paymeCheckForm" class="form">
+              <input name="order_id" required placeholder="order_id" />
+              <button type="submit">POST /payments/payme/check</button>
+            </form>
+            <form id="paymePerformForm" class="form">
+              <input name="order_id" required placeholder="order_id" />
+              <input name="transaction_id" required placeholder="transaction_id" />
+              <select name="success">
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+              <button type="submit">POST /payments/payme/perform</button>
+            </form>
+          </div>
+        </div>
+        <pre id="paymentsOut" class="output"></pre>
+      </div>
+
+      <div id="excelTab" class="tab">
+        <h2>Excel</h2>
+        <div class="grid2">
+          <div class="card">
+            <h3>Template</h3>
+            <button id="downloadTemplateBtn">GET /excel/products/template</button>
+          </div>
+          <div class="card">
+            <h3>Import</h3>
+            <form id="excelImportForm" class="form">
+              <input type="file" name="excel_file" required />
+              <button type="submit">POST /excel/products/import</button>
+            </form>
+          </div>
+        </div>
+        <pre id="excelOut" class="output"></pre>
+      </div>
+    </section>
+  </main>
+
+  <script src="/admin/app.js"></script>
+</body>
+</html>

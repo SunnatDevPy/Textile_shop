@@ -65,6 +65,7 @@ app = FastAPI(
     docs_url="/docs",
     lifespan=lifespan,
 )
+app.mount("/admin", StaticFiles(directory="admin_panel", html=True), name="admin_panel")
 # app.add_middleware(
 #     # CORSMiddleware,
 #     # # allow_origins=["https://web.telegram.org", "https://your-client.com"],
@@ -89,17 +90,33 @@ app.add_middleware(SessionMiddleware, secret_key=conf.SECRET_KEY)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # или список конкретных доменов
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+@app.middleware("http")
+async def db_session_safety_middleware(request, call_next):
+    """
+    Global AsyncSession ishlatilayotgani uchun har requestdan keyin
+    transaction holatini tozalab turamiz, aks holda InFailedSQLTransactionError
+    keyingi endpointlarga ham o'tib ketishi mumkin.
+    """
+    try:
+        response = await call_next(request)
+    except Exception:
+        await db.rollback()
+        raise
+    await db.rollback()
+    return response
+
+
 @app.options("/{full_path:path}")
 async def preflight_handler(full_path: str):
     headers = {
-        "Access-Control-Allow-Origin": "*",  # Или конкретные домены
+        "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
     }

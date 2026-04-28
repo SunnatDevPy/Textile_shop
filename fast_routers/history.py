@@ -123,93 +123,104 @@ async def sales_stats(
     date_to: Optional[str] = Query(None, description="ISO sana: 2026-04-30 yoki 2026-04-30T23:59:59"),
 ):
     enforce_rate_limit(request, scope="analytics")
+    # Global session oldingi requestda xato bo'lib qolgan bo'lsa, tozalab olamiz.
+    await db.rollback()
     try:
         dt_from, dt_to = _parse_date_range(date_from, date_to)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sana formati noto'g'ri (ISO kerak)")
+    try:
+        total_orders_query = select(func.count(Order.id))
+        total_criteria = []
+        if dt_from:
+            total_criteria.append(Order.created_at >= dt_from)
+        if dt_to:
+            total_criteria.append(Order.created_at <= dt_to)
+        if total_criteria:
+            total_orders_query = total_orders_query.where(and_(*total_criteria))
 
-    total_orders_query = select(func.count(Order.id))
-    total_criteria = []
-    if dt_from:
-        total_criteria.append(Order.created_at >= dt_from)
-    if dt_to:
-        total_criteria.append(Order.created_at <= dt_to)
-    if total_criteria:
-        total_orders_query = total_orders_query.where(and_(*total_criteria))
+        sold_statuses = [
+            Order.StatusOrder.PAID.value,
+            Order.StatusOrder.IS_PROCESS.value,
+            Order.StatusOrder.READY.value,
+            Order.StatusOrder.IN_PROGRESS.value,
+            Order.StatusOrder.DELIVERED.value,
+        ]
 
-    sold_statuses = [
-        Order.StatusOrder.PAID.value,
-        Order.StatusOrder.IS_PROCESS.value,
-        Order.StatusOrder.READY.value,
-        Order.StatusOrder.IN_PROGRESS.value,
-        Order.StatusOrder.DELIVERED.value,
-    ]
-
-    sales_query = (
-        select(
-            func.count(func.distinct(Order.id)).label("paid_orders"),
-            func.coalesce(func.sum(OrderItem.count), 0).label("sold_items_count"),
-            func.coalesce(func.sum(OrderItem.total), 0).label("sales_amount"),
+        sales_query = (
+            select(
+                func.count(func.distinct(Order.id)).label("paid_orders"),
+                func.coalesce(func.sum(OrderItem.count), 0).label("sold_items_count"),
+                func.coalesce(func.sum(OrderItem.total), 0).label("sales_amount"),
+            )
+            .select_from(Order)
+            .join(OrderItem, OrderItem.order_id == Order.id)
+            .where(Order.status.in_(sold_statuses))
         )
-        .select_from(Order)
-        .join(OrderItem, OrderItem.order_id == Order.id)
-        .where(Order.status.in_(sold_statuses))
-    )
 
-    sales_criteria = []
-    if dt_from:
-        sales_criteria.append(Order.created_at >= dt_from)
-    if dt_to:
-        sales_criteria.append(Order.created_at <= dt_to)
-    if sales_criteria:
-        sales_query = sales_query.where(and_(*sales_criteria))
+        sales_criteria = []
+        if dt_from:
+            sales_criteria.append(Order.created_at >= dt_from)
+        if dt_to:
+            sales_criteria.append(Order.created_at <= dt_to)
+        if sales_criteria:
+            sales_query = sales_query.where(and_(*sales_criteria))
 
-    total_orders = (await db.execute(total_orders_query)).scalar() or 0
-    sales_row = (await db.execute(sales_query)).one()
+        total_orders = (await db.execute(total_orders_query)).scalar() or 0
+        sales_row = (await db.execute(sales_query)).one()
 
-    payment_breakdown_query = (
-        select(
-            Order.payment.label("payment"),
-            func.count(func.distinct(Order.id)).label("orders_count"),
-            func.coalesce(func.sum(OrderItem.count), 0).label("items_count"),
-            func.coalesce(func.sum(OrderItem.total), 0).label("amount"),
+        payment_breakdown_query = (
+            select(
+                Order.payment.label("payment"),
+                func.count(func.distinct(Order.id)).label("orders_count"),
+                func.coalesce(func.sum(OrderItem.count), 0).label("items_count"),
+                func.coalesce(func.sum(OrderItem.total), 0).label("amount"),
+            )
+            .select_from(Order)
+            .join(OrderItem, OrderItem.order_id == Order.id)
+            .where(Order.status.in_(sold_statuses))
+            .group_by(Order.payment)
         )
-        .select_from(Order)
-        .join(OrderItem, OrderItem.order_id == Order.id)
-        .where(Order.status.in_(sold_statuses))
-        .group_by(Order.payment)
-    )
-    if sales_criteria:
-        payment_breakdown_query = payment_breakdown_query.where(and_(*sales_criteria))
+        if sales_criteria:
+            payment_breakdown_query = payment_breakdown_query.where(and_(*sales_criteria))
 
-    breakdown_rows = (await db.execute(payment_breakdown_query)).all()
-    payment_breakdown = {
-        "click": {"orders_count": 0, "items_count": 0, "amount": 0},
-        "payme": {"orders_count": 0, "items_count": 0, "amount": 0},
-        "cash": {"orders_count": 0, "items_count": 0, "amount": 0},
-    }
-    for row in breakdown_rows:
-        payment_key = getattr(row.payment, "value", str(row.payment)).lower()
-        if payment_key not in payment_breakdown:
-            payment_breakdown[payment_key] = {"orders_count": 0, "items_count": 0, "amount": 0}
-        payment_breakdown[payment_key] = {
-            "orders_count": int(row.orders_count or 0),
-            "items_count": int(row.items_count or 0),
-            "amount": int(row.amount or 0),
+        breakdown_rows = (await db.execute(payment_breakdown_query)).all()
+        payment_breakdown = {
+            "click": {"orders_count": 0, "items_count": 0, "amount": 0},
+            "payme": {"orders_count": 0, "items_count": 0, "amount": 0},
+            "cash": {"orders_count": 0, "items_count": 0, "amount": 0},
         }
+        for row in breakdown_rows:
+            payment_key = getattr(row.payment, "value", str(row.payment)).lower()
+            if payment_key not in payment_breakdown:
+                payment_breakdown[payment_key] = {"orders_count": 0, "items_count": 0, "amount": 0}
+            payment_breakdown[payment_key] = {
+                "orders_count": int(row.orders_count or 0),
+                "items_count": int(row.items_count or 0),
+                "amount": int(row.amount or 0),
+            }
 
-    return ok_response(
-        {
-            "from": date_from,
-            "to": date_to,
-            "total_orders": int(total_orders),
-            "paid_orders": int(sales_row.paid_orders or 0),
-            "sold_items_count": int(sales_row.sold_items_count or 0),
-            "sales_amount": int(sales_row.sales_amount or 0),
-            "payment_breakdown": payment_breakdown,
-            "currency": "UZS",
-        }
-    )
+        return ok_response(
+            {
+                "from": date_from,
+                "to": date_to,
+                "total_orders": int(total_orders),
+                "paid_orders": int(sales_row.paid_orders or 0),
+                "sold_items_count": int(sales_row.sold_items_count or 0),
+                "sales_amount": int(sales_row.sales_amount or 0),
+                "payment_breakdown": payment_breakdown,
+                "currency": "UZS",
+            }
+        )
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Sales statistikani olishda xatolik",
+        )
 
 
 @history_router.get(
@@ -224,209 +235,220 @@ async def analytics_v2(
     top_limit: int = Query(10, ge=1, le=100),
 ):
     enforce_rate_limit(request, scope="analytics")
+    # Global session oldingi requestda xato bo'lib qolgan bo'lsa, tozalab olamiz.
+    await db.rollback()
     try:
         dt_from, dt_to = _parse_date_range(date_from, date_to)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sana formati noto'g'ri (ISO kerak)")
+    try:
+        sold_statuses = [
+            Order.StatusOrder.PAID.value,
+            Order.StatusOrder.IS_PROCESS.value,
+            Order.StatusOrder.READY.value,
+            Order.StatusOrder.IN_PROGRESS.value,
+            Order.StatusOrder.DELIVERED.value,
+        ]
 
-    sold_statuses = [
-        Order.StatusOrder.PAID.value,
-        Order.StatusOrder.IS_PROCESS.value,
-        Order.StatusOrder.READY.value,
-        Order.StatusOrder.IN_PROGRESS.value,
-        Order.StatusOrder.DELIVERED.value,
-    ]
+        base_criteria = []
+        if dt_from:
+            base_criteria.append(Order.created_at >= dt_from)
+        if dt_to:
+            base_criteria.append(Order.created_at <= dt_to)
 
-    base_criteria = []
-    if dt_from:
-        base_criteria.append(Order.created_at >= dt_from)
-    if dt_to:
-        base_criteria.append(Order.created_at <= dt_to)
+        # 1) Conversion by status + total orders
+        total_orders_q = select(func.count(Order.id))
+        if base_criteria:
+            total_orders_q = total_orders_q.where(and_(*base_criteria))
+        total_orders = int((await db.execute(total_orders_q)).scalar() or 0)
 
-    # 1) Conversion by status + total orders
-    total_orders_q = select(func.count(Order.id))
-    if base_criteria:
-        total_orders_q = total_orders_q.where(and_(*base_criteria))
-    total_orders = int((await db.execute(total_orders_q)).scalar() or 0)
-
-    status_q = (
-        select(
-            Order.status.label("status"),
-            func.count(Order.id).label("count"),
+        status_q = (
+            select(
+                Order.status.label("status"),
+                func.count(Order.id).label("count"),
+            )
+            .select_from(Order)
+            .group_by(Order.status)
         )
-        .select_from(Order)
-        .group_by(Order.status)
-    )
-    if base_criteria:
-        status_q = status_q.where(and_(*base_criteria))
-    status_rows = (await db.execute(status_q)).all()
-    conversion_by_status = {}
-    for row in status_rows:
-        status_key = getattr(row.status, "value", str(row.status))
-        count_val = int(row.count or 0)
-        conversion_by_status[status_key] = {
-            "orders_count": count_val,
-            "rate": (count_val / total_orders) if total_orders else 0.0,
+        if base_criteria:
+            status_q = status_q.where(and_(*base_criteria))
+        status_rows = (await db.execute(status_q)).all()
+        conversion_by_status = {}
+        for row in status_rows:
+            status_key = getattr(row.status, "value", str(row.status))
+            count_val = int(row.count or 0)
+            conversion_by_status[status_key] = {
+                "orders_count": count_val,
+                "rate": (count_val / total_orders) if total_orders else 0.0,
+            }
+
+        # 2) Top products (by quantity + revenue)
+        top_products_q = (
+            select(
+                OrderItem.product_id.label("product_id"),
+                Product.name_uz.label("name_uz"),
+                func.sum(OrderItem.count).label("sold_items"),
+                func.sum(OrderItem.total).label("revenue"),
+            )
+            .select_from(OrderItem)
+            .join(Order, Order.id == OrderItem.order_id)
+            .join(Product, Product.id == OrderItem.product_id)
+            .where(Order.status.in_(sold_statuses))
+            .group_by(OrderItem.product_id, Product.name_uz)
+            .order_by(desc(func.sum(OrderItem.count)), desc(func.sum(OrderItem.total)))
+            .limit(top_limit)
+        )
+        if base_criteria:
+            top_products_q = top_products_q.where(and_(*base_criteria))
+        top_rows = (await db.execute(top_products_q)).all()
+        top_products = [
+            {
+                "product_id": int(row.product_id),
+                "name_uz": row.name_uz,
+                "sold_items": int(row.sold_items or 0),
+                "revenue": int(row.revenue or 0),
+            }
+            for row in top_rows
+        ]
+
+        # 3) Average check (sold orders only)
+        sold_order_totals_q = (
+            select(
+                Order.id.label("order_id"),
+                func.coalesce(func.sum(OrderItem.total), 0).label("order_total"),
+            )
+            .select_from(Order)
+            .join(OrderItem, OrderItem.order_id == Order.id)
+            .where(Order.status.in_(sold_statuses))
+            .group_by(Order.id)
+        )
+        if base_criteria:
+            sold_order_totals_q = sold_order_totals_q.where(and_(*base_criteria))
+        sold_order_totals_rows = (await db.execute(sold_order_totals_q)).all()
+        sold_orders_count = len(sold_order_totals_rows)
+        sold_orders_revenue = sum(int(r.order_total or 0) for r in sold_order_totals_rows)
+        avg_check = int(sold_orders_revenue / sold_orders_count) if sold_orders_count else 0
+
+        # 4) LTV (by customer contact)
+        ltv_q = (
+            select(
+                Order.contact.label("contact"),
+                func.count(func.distinct(Order.id)).label("orders_count"),
+                func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
+            )
+            .select_from(Order)
+            .join(OrderItem, OrderItem.order_id == Order.id)
+            .where(Order.status.in_(sold_statuses))
+            .group_by(Order.contact)
+        )
+        if base_criteria:
+            ltv_q = ltv_q.where(and_(*base_criteria))
+        ltv_rows = (await db.execute(ltv_q)).all()
+        customers_count = len(ltv_rows)
+        total_ltv_revenue = sum(int(r.revenue or 0) for r in ltv_rows)
+        avg_ltv = int(total_ltv_revenue / customers_count) if customers_count else 0
+        top_customers_by_ltv = [
+            {
+                "contact": r.contact,
+                "orders_count": int(r.orders_count or 0),
+                "ltv": int(r.revenue or 0),
+            }
+            for r in sorted(ltv_rows, key=lambda x: int(x.revenue or 0), reverse=True)[:top_limit]
+        ]
+
+        # 5) Repeat sales (by contact)
+        repeat_customers = sum(1 for r in ltv_rows if int(r.orders_count or 0) > 1)
+        repeat_sales = {
+            "customers_count": customers_count,
+            "repeat_customers_count": int(repeat_customers),
+            "repeat_customer_rate": (repeat_customers / customers_count) if customers_count else 0.0,
         }
 
-    # 2) Top products (by quantity + revenue)
-    top_products_q = (
-        select(
-            OrderItem.product_id.label("product_id"),
-            Product.name_uz.label("name_uz"),
-            func.sum(OrderItem.count).label("sold_items"),
-            func.sum(OrderItem.total).label("revenue"),
+        # 6) Sales by day
+        sales_by_day_q = (
+            select(
+                func.date_trunc("day", Order.created_at).label("bucket"),
+                func.count(func.distinct(Order.id)).label("orders_count"),
+                func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
+                func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
+            )
+            .select_from(Order)
+            .join(OrderItem, OrderItem.order_id == Order.id)
+            .where(Order.status.in_(sold_statuses))
+            .group_by(func.date_trunc("day", Order.created_at))
+            .order_by(func.date_trunc("day", Order.created_at))
         )
-        .select_from(OrderItem)
-        .join(Order, Order.id == OrderItem.order_id)
-        .join(Product, Product.id == OrderItem.product_id)
-        .where(Order.status.in_(sold_statuses))
-        .group_by(OrderItem.product_id, Product.name_uz)
-        .order_by(desc(func.sum(OrderItem.count)), desc(func.sum(OrderItem.total)))
-        .limit(top_limit)
-    )
-    if base_criteria:
-        top_products_q = top_products_q.where(and_(*base_criteria))
-    top_rows = (await db.execute(top_products_q)).all()
-    top_products = [
-        {
-            "product_id": int(row.product_id),
-            "name_uz": row.name_uz,
-            "sold_items": int(row.sold_items or 0),
-            "revenue": int(row.revenue or 0),
-        }
-        for row in top_rows
-    ]
+        if base_criteria:
+            sales_by_day_q = sales_by_day_q.where(and_(*base_criteria))
+        sales_by_day_rows = (await db.execute(sales_by_day_q)).all()
+        sales_by_day = [
+            {
+                "date": row.bucket.date().isoformat(),
+                "orders_count": int(row.orders_count or 0),
+                "sold_items": int(row.sold_items or 0),
+                "revenue": int(row.revenue or 0),
+            }
+            for row in sales_by_day_rows
+        ]
 
-    # 3) Average check (sold orders only)
-    sold_order_totals_q = (
-        select(
-            Order.id.label("order_id"),
-            func.coalesce(func.sum(OrderItem.total), 0).label("order_total"),
+        # 7) Sales by week
+        sales_by_week_q = (
+            select(
+                func.date_trunc("week", Order.created_at).label("bucket"),
+                func.count(func.distinct(Order.id)).label("orders_count"),
+                func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
+                func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
+            )
+            .select_from(Order)
+            .join(OrderItem, OrderItem.order_id == Order.id)
+            .where(Order.status.in_(sold_statuses))
+            .group_by(func.date_trunc("week", Order.created_at))
+            .order_by(func.date_trunc("week", Order.created_at))
         )
-        .select_from(Order)
-        .join(OrderItem, OrderItem.order_id == Order.id)
-        .where(Order.status.in_(sold_statuses))
-        .group_by(Order.id)
-    )
-    if base_criteria:
-        sold_order_totals_q = sold_order_totals_q.where(and_(*base_criteria))
-    sold_order_totals_rows = (await db.execute(sold_order_totals_q)).all()
-    sold_orders_count = len(sold_order_totals_rows)
-    sold_orders_revenue = sum(int(r.order_total or 0) for r in sold_order_totals_rows)
-    avg_check = int(sold_orders_revenue / sold_orders_count) if sold_orders_count else 0
+        if base_criteria:
+            sales_by_week_q = sales_by_week_q.where(and_(*base_criteria))
+        sales_by_week_rows = (await db.execute(sales_by_week_q)).all()
+        sales_by_week = [
+            {
+                "week_start": row.bucket.date().isoformat(),
+                "orders_count": int(row.orders_count or 0),
+                "sold_items": int(row.sold_items or 0),
+                "revenue": int(row.revenue or 0),
+            }
+            for row in sales_by_week_rows
+        ]
 
-    # 4) LTV (by customer contact)
-    ltv_q = (
-        select(
-            Order.contact.label("contact"),
-            func.count(func.distinct(Order.id)).label("orders_count"),
-            func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
+        return ok_response(
+            {
+                "from": date_from,
+                "to": date_to,
+                "currency": "UZS",
+                "top_products": top_products,
+                "conversion_by_status": conversion_by_status,
+                "average_check": {
+                    "sold_orders_count": sold_orders_count,
+                    "sold_orders_revenue": sold_orders_revenue,
+                    "avg_check": avg_check,
+                },
+                "ltv": {
+                    "customers_count": customers_count,
+                    "avg_ltv": avg_ltv,
+                    "top_customers": top_customers_by_ltv,
+                },
+                "repeat_sales": repeat_sales,
+                "sales_by_day": sales_by_day,
+                "sales_by_week": sales_by_week,
+            }
         )
-        .select_from(Order)
-        .join(OrderItem, OrderItem.order_id == Order.id)
-        .where(Order.status.in_(sold_statuses))
-        .group_by(Order.contact)
-    )
-    if base_criteria:
-        ltv_q = ltv_q.where(and_(*base_criteria))
-    ltv_rows = (await db.execute(ltv_q)).all()
-    customers_count = len(ltv_rows)
-    total_ltv_revenue = sum(int(r.revenue or 0) for r in ltv_rows)
-    avg_ltv = int(total_ltv_revenue / customers_count) if customers_count else 0
-    top_customers_by_ltv = [
-        {
-            "contact": r.contact,
-            "orders_count": int(r.orders_count or 0),
-            "ltv": int(r.revenue or 0),
-        }
-        for r in sorted(ltv_rows, key=lambda x: int(x.revenue or 0), reverse=True)[:top_limit]
-    ]
-
-    # 5) Repeat sales (by contact)
-    repeat_customers = sum(1 for r in ltv_rows if int(r.orders_count or 0) > 1)
-    repeat_sales = {
-        "customers_count": customers_count,
-        "repeat_customers_count": int(repeat_customers),
-        "repeat_customer_rate": (repeat_customers / customers_count) if customers_count else 0.0,
-    }
-
-    # 6) Sales by day
-    sales_by_day_q = (
-        select(
-            func.date_trunc("day", Order.created_at).label("bucket"),
-            func.count(func.distinct(Order.id)).label("orders_count"),
-            func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
-            func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Analytics statistikani olishda xatolik",
         )
-        .select_from(Order)
-        .join(OrderItem, OrderItem.order_id == Order.id)
-        .where(Order.status.in_(sold_statuses))
-        .group_by(func.date_trunc("day", Order.created_at))
-        .order_by(func.date_trunc("day", Order.created_at))
-    )
-    if base_criteria:
-        sales_by_day_q = sales_by_day_q.where(and_(*base_criteria))
-    sales_by_day_rows = (await db.execute(sales_by_day_q)).all()
-    sales_by_day = [
-        {
-            "date": row.bucket.date().isoformat(),
-            "orders_count": int(row.orders_count or 0),
-            "sold_items": int(row.sold_items or 0),
-            "revenue": int(row.revenue or 0),
-        }
-        for row in sales_by_day_rows
-    ]
-
-    # 7) Sales by week
-    sales_by_week_q = (
-        select(
-            func.date_trunc("week", Order.created_at).label("bucket"),
-            func.count(func.distinct(Order.id)).label("orders_count"),
-            func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
-            func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
-        )
-        .select_from(Order)
-        .join(OrderItem, OrderItem.order_id == Order.id)
-        .where(Order.status.in_(sold_statuses))
-        .group_by(func.date_trunc("week", Order.created_at))
-        .order_by(func.date_trunc("week", Order.created_at))
-    )
-    if base_criteria:
-        sales_by_week_q = sales_by_week_q.where(and_(*base_criteria))
-    sales_by_week_rows = (await db.execute(sales_by_week_q)).all()
-    sales_by_week = [
-        {
-            "week_start": row.bucket.date().isoformat(),
-            "orders_count": int(row.orders_count or 0),
-            "sold_items": int(row.sold_items or 0),
-            "revenue": int(row.revenue or 0),
-        }
-        for row in sales_by_week_rows
-    ]
-
-    return ok_response(
-        {
-            "from": date_from,
-            "to": date_to,
-            "currency": "UZS",
-            "top_products": top_products,
-            "conversion_by_status": conversion_by_status,
-            "average_check": {
-                "sold_orders_count": sold_orders_count,
-                "sold_orders_revenue": sold_orders_revenue,
-                "avg_check": avg_check,
-            },
-            "ltv": {
-                "customers_count": customers_count,
-                "avg_ltv": avg_ltv,
-                "top_customers": top_customers_by_ltv,
-            },
-            "repeat_sales": repeat_sales,
-            "sales_by_day": sales_by_day,
-            "sales_by_week": sales_by_week,
-        }
-    )
 
 
 @history_router.get(

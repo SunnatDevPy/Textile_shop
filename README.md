@@ -4,6 +4,7 @@ Ushbu loyiha `Textile Shop` uchun backend API.
 
 - Stack: `FastAPI + PostgreSQL + SQLAlchemy (async)`
 - Swagger: `/docs`
+- Admin panel UI: `/admin`
 - Base URL (local): `http://localhost:8000`
 
 ---

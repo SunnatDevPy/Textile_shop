@@ -13,6 +13,7 @@ from fast_routers.admin_auth import verify_admin_credentials
 from models import AdminUser, Order, OrderItem, Product, ProductItems
 from models.database import db
 from utils.audit import write_audit_log
+from utils.notifications import send_order_status_email
 from utils.response import ok_response
 from utils.security import enforce_rate_limit
 
@@ -99,6 +100,7 @@ class CreateOrderPayload(BaseModel):
     payment: str = Field(..., description="click, payme yoki cash")
     items: list[OrderLineIn]
     email_address: Optional[str] = None
+    gmail: Optional[str] = None
     state_county: Optional[str] = None
 
 
@@ -221,7 +223,7 @@ async def create_order(request: Request, payload: CreateOrderPayload):
             status=Order.StatusOrder.NEW,
             state_county=payload.state_county,
             contact=payload.contact,
-            email_address=payload.email_address,
+            email_address=payload.email_address or payload.gmail,
             postcode_zip=payload.postcode_zip,
         )
     except DBAPIError:
@@ -316,6 +318,12 @@ async def confirm_payment(
             actor=user.username,
             details=f"status={next_status}",
         )
+        await send_order_status_email(
+            to_email=order.email_address,
+            order_id=order_id,
+            old_status=current,
+            new_status=next_status,
+        )
     except HTTPException:
         raise
     except Exception:
@@ -373,6 +381,12 @@ async def update_order_status(
             action="status_update",
             actor=user.username,
             details=f"new_status={new_status}",
+        )
+        await send_order_status_email(
+            to_email=order.email_address,
+            order_id=order_id,
+            old_status=current,
+            new_status=new_status,
         )
     except DBAPIError:
         raise HTTPException(
