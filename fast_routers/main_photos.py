@@ -4,11 +4,11 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.params import Depends
 from starlette import status
 
-from fast_routers.admin_auth import verify_admin_credentials
-from models import MainPhoto
+from fast_routers.admin_auth import require_admin
+from models import AdminUser, MainPhoto
 
 main_photos_router = APIRouter(prefix='/banners', tags=['Banners'])
-AdminAuth = Annotated[bool, Depends(verify_admin_credentials)]
+AdminOnlyAuth = Annotated[AdminUser, Depends(require_admin)]
 
 
 @main_photos_router.get(path="/", name="All banner photos", summary="Bannerlar ro'yxati")
@@ -19,7 +19,7 @@ async def list_banner_photos():
 
 @main_photos_router.post("/", name="Create Photo", summary="Banner rasmi qo'shish (admin)")
 async def create_banner_photo(
-        _: AdminAuth,
+        _: AdminOnlyAuth,
         photo: UploadFile = File(...),
 ):
     await MainPhoto.create(photo=photo)
@@ -28,7 +28,7 @@ async def create_banner_photo(
 
 @main_photos_router.delete(path='/{photo_id}', name="Delete Banner photo", summary="Banner rasmini o'chirish (admin)")
 async def delete_banner_photo(
-    _: AdminAuth,
+    _: AdminOnlyAuth,
     photo_id: int,
 ):
     photo = await MainPhoto.get_or_none(photo_id)

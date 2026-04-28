@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
-from fast_routers.admin_auth import verify_admin_credentials
+from fast_routers.admin_auth import require_admin
 from models import AdminUser, Size
 
 size_router = APIRouter(prefix='/size', tags=['Size'])
@@ -44,7 +44,7 @@ async def size_get_one(size_id: int):
 
 @size_router.post(path="/", name="Create Size", summary="O'lcham yaratish (admin)")
 async def create_size(
-        _: Annotated[AdminUser, Depends(verify_admin_credentials)],
+        _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[UpdateOrCreateSizeModel, Depends(UpdateOrCreateSizeModel.as_form)]
 ):
     try:
@@ -58,7 +58,7 @@ async def create_size(
 @size_router.patch(path='/{size_id}', name="Update Size", summary="O'lchamni yangilash (admin)")
 async def list_size(
         size_id: int,
-        _: Annotated[AdminUser, Depends(verify_admin_credentials)],
+        _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[
             UpdateOrCreateSizeModel, Depends(UpdateOrCreateSizeModel.as_form)]
 ):
@@ -75,7 +75,7 @@ async def list_size(
 
 
 @size_router.delete(path='/{size_id}', name="Delete Size", summary="O'lchamni o'chirish (admin)")
-async def list_size(size_id: int, _: Annotated[AdminUser, Depends(verify_admin_credentials)]):
+async def list_size(size_id: int, _: Annotated[AdminUser, Depends(require_admin)]):
     size = await Size.get_or_none(size_id)
     if size:
         await Size.delete(size_id)

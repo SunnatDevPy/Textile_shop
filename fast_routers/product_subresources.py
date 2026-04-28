@@ -7,11 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
-from fast_routers.admin_auth import verify_admin_credentials
-from models import Color, Product, ProductDetail, ProductItems, ProductPhoto, Size
+from fast_routers.admin_auth import require_admin
+from models import AdminUser, Color, Product, ProductDetail, ProductItems, ProductPhoto, Size
 from models.database import db
 
-AdminAuth = Annotated[bool, Depends(verify_admin_credentials)]
+AdminOnlyAuth = Annotated[AdminUser, Depends(require_admin)]
 
 
 def _require_image_upload(photo: UploadFile) -> None:
@@ -48,7 +48,7 @@ async def get_product_photo(photo_id: int):
 
 @product_photo_router.post('', name='Create product photo', summary="Mahsulot rasmi qo'shish (admin)")
 async def create_product_photo(
-    _: AdminAuth,
+    _: AdminOnlyAuth,
     product_id: int = Form(),
     photo: UploadFile = File(...),
 ):
@@ -68,7 +68,7 @@ async def create_product_photo(
 @product_photo_router.patch('/{photo_id}', name='Update product photo', summary="Mahsulot rasmini yangilash (admin)")
 async def update_product_photo(
     photo_id: int,
-    _: AdminAuth,
+    _: AdminOnlyAuth,
     product_id: Optional[int] = Form(None),
     photo: Optional[UploadFile] = File(default=None),
 ):
@@ -94,7 +94,7 @@ async def update_product_photo(
 
 
 @product_photo_router.delete('/{photo_id}', name='Delete product photo', summary="Mahsulot rasmini o'chirish (admin)")
-async def delete_product_photo(photo_id: int, _: AdminAuth):
+async def delete_product_photo(photo_id: int, _: AdminOnlyAuth):
     if await ProductPhoto.get_or_none(photo_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Rasm topilmadi')
     try:
@@ -127,7 +127,7 @@ async def get_product_item(item_id: int):
 
 @product_items_router.post('', name='Create product item', summary="Mahsulot varianti yaratish (admin)")
 async def create_product_item(
-    _: AdminAuth,
+    _: AdminOnlyAuth,
     product_id: int = Form(),
     color_id: int = Form(),
     size_id: int = Form(),
@@ -157,7 +157,7 @@ async def create_product_item(
 @product_items_router.patch('/{item_id}', name='Update product item', summary="Mahsulot variantini yangilash (admin)")
 async def update_product_item(
     item_id: int,
-    _: AdminAuth,
+    _: AdminOnlyAuth,
     product_id: Optional[int] = Form(None),
     color_id: Optional[int] = Form(None),
     size_id: Optional[int] = Form(None),
@@ -195,7 +195,7 @@ async def update_product_item(
 
 
 @product_items_router.delete('/{item_id}', name='Delete product item', summary="Mahsulot variantini o'chirish (admin)")
-async def delete_product_item(item_id: int, _: AdminAuth):
+async def delete_product_item(item_id: int, _: AdminOnlyAuth):
     if await ProductItems.get_or_none(item_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Item topilmadi')
     try:
@@ -229,7 +229,7 @@ async def get_product_detail_row(detail_id: int):
 
 @product_detail_router.post('', name='Create product detail', summary="Mahsulot tafsiloti yaratish (admin)")
 async def create_product_detail(
-    _: AdminAuth,
+    _: AdminOnlyAuth,
     product_id: int = Form(),
     name_uz: str = Form(),
     name_ru: str = Form(),
@@ -255,7 +255,7 @@ async def create_product_detail(
 @product_detail_router.patch('/{detail_id}', name='Update product detail', summary="Mahsulot tafsilotini yangilash (admin)")
 async def update_product_detail(
     detail_id: int,
-    _: AdminAuth,
+    _: AdminOnlyAuth,
     product_id: Optional[int] = Form(None),
     name_uz: Optional[str] = Form(None),
     name_ru: Optional[str] = Form(None),
@@ -289,7 +289,7 @@ async def update_product_detail(
 
 
 @product_detail_router.delete('/{detail_id}', name='Delete product detail', summary="Mahsulot tafsilotini o'chirish (admin)")
-async def delete_product_detail(detail_id: int, _: AdminAuth):
+async def delete_product_detail(detail_id: int, _: AdminOnlyAuth):
     if await ProductDetail.get_or_none(detail_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Detail topilmadi')
     try:

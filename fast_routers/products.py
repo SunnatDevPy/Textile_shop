@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
-from fast_routers.admin_auth import verify_admin_credentials
-from models import Category, Collection, Product, ProductPhoto
+from fast_routers.admin_auth import require_admin
+from models import AdminUser, Category, Collection, Product, ProductPhoto
 
 shop_product_router = APIRouter(prefix='/products', tags=['Products'])
 
-AdminAuth = Annotated[bool, Depends(verify_admin_credentials)]
+AdminOnlyAuth = Annotated[AdminUser, Depends(require_admin)]
 
 
 def _require_image_upload(photo: UploadFile) -> None:
@@ -54,7 +54,7 @@ async def get_product(product_id: int):
 
 @shop_product_router.post('', name='Create product', summary="Mahsulot yaratish (admin)")
 async def create_product(
-    _: AdminAuth,
+    _: AdminOnlyAuth,
     category_id: int = Form(),
     collection_id: int = Form(),
     name_uz: str = Form(),
@@ -110,7 +110,7 @@ async def create_product(
 @shop_product_router.patch('/{product_id}', name='Update product', summary="Mahsulotni yangilash (admin)")
 async def update_product(
     product_id: int,
-    _: AdminAuth,
+    _: AdminOnlyAuth,
     category_id: Optional[int] = Form(None),
     collection_id: Optional[int] = Form(None),
     name_uz: Optional[str] = Form(None),
@@ -175,7 +175,7 @@ async def update_product(
 
 
 @shop_product_router.delete('/{product_id}', name='Delete product', summary="Mahsulotni o'chirish (admin)")
-async def delete_product(product_id: int, _: AdminAuth):
+async def delete_product(product_id: int, _: AdminOnlyAuth):
     product = await Product.get_or_none(product_id)
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Product topilmadi')

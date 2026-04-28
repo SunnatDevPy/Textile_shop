@@ -20,6 +20,8 @@ from fast_routers.color import color_router
 from fast_routers.size import size_router
 from fast_routers.system import system_router
 from fast_routers.frontend import frontend_router
+from fast_routers.admin_users import admin_user_router
+from fast_routers.payments import payments_router
 from models import db
 
 
@@ -38,6 +40,8 @@ async def lifespan(app: FastAPI):
     app.include_router(size_router)
     app.include_router(system_router)
     app.include_router(frontend_router)
+    app.include_router(admin_user_router)
+    app.include_router(payments_router)
     await db.create_all()
     yield
 
@@ -47,7 +51,9 @@ app = FastAPI(
     description=(
         "Textile Shop backend API.\n\n"
         "Swagger orqali endpointlarni oddiy usulda test qilishingiz mumkin.\n"
-        "Admin amallari uchun Basic Auth talab qilinadi.\n"
+        "Autentifikatsiya: faqat Basic Auth (JWT ishlatilmaydi).\n"
+        "Super admin operator/admin yaratadi, operator asosan buyurtma bilan ishlaydi.\n"
+        "Click/Payme uchun callback endpointlar tayyorlangan.\n"
         "JWT endpointlari bu loyihada o'chirilgan."
     ),
     version="1.0.0",

@@ -109,6 +109,7 @@ class ProductPhoto(BaseModel):
 class Order(CreatedBaseModel):
     class StatusOrder(str, Enum):
         NEW = "yangi"
+        PAID = "to'landi"
         IS_PROCESS = "jarayonda"
         READY = "tayyor"
         IN_PROGRESS = "yetkazilmoqda"

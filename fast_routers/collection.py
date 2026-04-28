@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
-from fast_routers.admin_auth import verify_admin_credentials
+from fast_routers.admin_auth import require_admin
 from models import AdminUser, Category, Collection
 from utils.base_models_pydantic import ProductList
 
@@ -53,7 +53,7 @@ async def collection_get_one(collection_id: int):
 
 @collections_router.post(path="/", name="Create Collections", summary="Kolleksiya yaratish (admin)")
 async def create_collection(
-        _: Annotated[AdminUser, Depends(verify_admin_credentials)],
+        _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[UpdateOrCreateCollectionModel, Depends(UpdateOrCreateCollectionModel.as_form)]
 ):
     try:
@@ -67,7 +67,7 @@ async def create_collection(
 @collections_router.patch(path='/{collection_id}', name="Update Collections", summary="Kolleksiyani yangilash (admin)")
 async def list_collection(
         collection_id: int,
-        _: Annotated[AdminUser, Depends(verify_admin_credentials)],
+        _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[
             UpdateOrCreateCollectionModel, Depends(UpdateOrCreateCollectionModel.as_form)]
 ):
@@ -84,7 +84,7 @@ async def list_collection(
 
 
 @collections_router.delete(path='/{collection_id}', name="Delete Collections", summary="Kolleksiyani o'chirish (admin)")
-async def list_collection(collection_id: int, _: Annotated[AdminUser, Depends(verify_admin_credentials)]):
+async def list_collection(collection_id: int, _: Annotated[AdminUser, Depends(require_admin)]):
     collection = await Collection.get_or_none(collection_id)
     if collection:
         await Collection.delete(collection_id)

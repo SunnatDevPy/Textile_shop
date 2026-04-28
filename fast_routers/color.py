@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
-from fast_routers.admin_auth import verify_admin_credentials
+from fast_routers.admin_auth import require_admin
 from models import AdminUser, Category, Collection, Color
 from utils.base_models_pydantic import ProductList
 
@@ -53,7 +53,7 @@ async def color_get_one(color_id: int):
 
 @color_router.post(path="/", name="Create Color", summary="Rang yaratish (admin)")
 async def create_color(
-        _: Annotated[AdminUser, Depends(verify_admin_credentials)],
+        _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[UpdateOrCreateColorModel, Depends(UpdateOrCreateColorModel.as_form)]
 ):
     try:
@@ -67,7 +67,7 @@ async def create_color(
 @color_router.patch(path='/{color_id}', name="Update Color", summary="Rangni yangilash (admin)")
 async def list_color(
         color_id: int,
-        _: Annotated[AdminUser, Depends(verify_admin_credentials)],
+        _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[
             UpdateOrCreateColorModel, Depends(UpdateOrCreateColorModel.as_form)]
 ):
@@ -84,7 +84,7 @@ async def list_color(
 
 
 @color_router.delete(path='/{color_id}', name="Delete Color", summary="Rangni o'chirish (admin)")
-async def list_color(color_id: int, _: Annotated[AdminUser, Depends(verify_admin_credentials)]):
+async def list_color(color_id: int, _: Annotated[AdminUser, Depends(require_admin)]):
     color = await Color.get_or_none(color_id)
     if color:
         await Color.delete(color_id)

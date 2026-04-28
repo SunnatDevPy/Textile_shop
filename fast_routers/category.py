@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
-from fast_routers.admin_auth import verify_admin_credentials
+from fast_routers.admin_auth import require_admin
 from models import AdminUser, Category
 from utils.base_models_pydantic import ProductList
 
@@ -50,7 +50,7 @@ async def category_get_one(category_id: int):
 
 @categories_router.post(path="", name="Create Category", summary="Kategoriya yaratish (admin)")
 async def create_category(
-        _: Annotated[AdminUser, Depends(verify_admin_credentials)],
+        _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[UpdateOrCreateCategoryModel, Depends(UpdateOrCreateCategoryModel.as_form)]
 ):
     try:
@@ -64,7 +64,7 @@ async def create_category(
 @categories_router.patch(path='/{category_id}', name="Update Category", summary="Kategoriyani yangilash (admin)")
 async def list_category_shop(
         category_id: int,
-        _: Annotated[AdminUser, Depends(verify_admin_credentials)],
+        _: Annotated[AdminUser, Depends(require_admin)],
         payload: Annotated[
             UpdateOrCreateCategoryModel, Depends(UpdateOrCreateCategoryModel.as_form)]
 ):
@@ -81,7 +81,7 @@ async def list_category_shop(
 
 
 @categories_router.delete(path='/{category_id}', name="Delete Category", summary="Kategoriyani o'chirish (admin)")
-async def list_category_shop(category_id: int, _: Annotated[AdminUser, Depends(verify_admin_credentials)]):
+async def list_category_shop(category_id: int, _: Annotated[AdminUser, Depends(require_admin)]):
     category = await Category.get_or_none(category_id)
     if category:
         await Category.delete(category_id)

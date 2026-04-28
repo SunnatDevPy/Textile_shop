@@ -9,12 +9,12 @@ from sqlalchemy.exc import DBAPIError
 from starlette import status
 
 from fast_routers.admin_auth import verify_admin_credentials
-from models import Order, OrderItem, Product, ProductItems
+from models import AdminUser, Order, OrderItem, Product, ProductItems
 from models.database import db
 
 order_router = APIRouter(prefix='/order', tags=['Orders'])
 
-AdminAuth = Annotated[bool, Depends(verify_admin_credentials)]
+StaffAuth = Annotated[AdminUser, Depends(verify_admin_credentials)]
 
 
 def _status_value(s: Union[str, object, None]) -> Optional[str]:
@@ -23,6 +23,33 @@ def _status_value(s: Union[str, object, None]) -> Optional[str]:
     if hasattr(s, 'value'):
         return str(s.value)
     return str(s)
+
+
+async def _deduct_stock_for_order(order_id: int) -> None:
+    lines = await OrderItem.get_order_items(order_id)
+    if not lines:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Buyurtmada mahsulot qatorlari yo'q",
+        )
+
+    for oi in lines:
+        res = await db.execute(
+            update(ProductItems)
+            .where(
+                ProductItems.id == oi.product_item_id,
+                ProductItems.total_count >= oi.count,
+            )
+            .values(total_count=ProductItems.total_count - oi.count)
+        )
+        if res.rowcount != 1:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Omborda yetarli mahsulot yo'q (product_item_id={oi.product_item_id}, "
+                    f"kerak={oi.count})"
+                ),
+            )
 
 
 class OrderLineIn(BaseModel):
@@ -51,13 +78,13 @@ class ConfirmPaymentPayload(BaseModel):
     next_status: Optional[str] = None
 
 
-@order_router.get('', name='Orders list', summary="Buyurtmalar ro'yxati")
-async def list_orders():
+@order_router.get('', name='Orders list', summary="Buyurtmalar ro'yxati (operator/admin)")
+async def list_orders(_: StaffAuth):
     return await Order.all()
 
 
-@order_router.get('/{order_id}', name='Order detail', summary="Bitta buyurtma tafsiloti")
-async def get_order(order_id: int):
+@order_router.get('/{order_id}', name='Order detail', summary="Bitta buyurtma tafsiloti (operator/admin)")
+async def get_order(order_id: int, _: StaffAuth):
     order = await Order.get_or_none(order_id, relationship=Order.order_items)
     if order is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Buyurtma topilmadi')
@@ -146,9 +173,10 @@ async def create_order(payload: CreateOrderPayload):
     }
 
 
-@order_router.post('/{order_id}/confirm-payment', name='Confirm payment: status + stock', summary="To'lovni tasdiqlash va stockni kamaytirish")
+@order_router.post('/{order_id}/confirm-payment', name='Confirm payment: status + stock', summary="To'lovni tasdiqlash va stockni kamaytirish (operator/admin)")
 async def confirm_payment(
     order_id: int,
+    _: StaffAuth,
     body: Optional[ConfirmPaymentPayload] = None,
 ):
     """
@@ -160,9 +188,12 @@ async def confirm_payment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Buyurtma topilmadi')
 
     current = _status_value(order.status)
-    paid_status = Order.StatusOrder.IS_PROCESS.value
+    paid_statuses = {
+        Order.StatusOrder.PAID.value,
+        Order.StatusOrder.IS_PROCESS.value,
+    }
 
-    if current == paid_status:
+    if current in paid_statuses:
         return {'ok': True, 'already_paid': True, 'order_id': order_id}
 
     if current != Order.StatusOrder.NEW.value:
@@ -171,7 +202,7 @@ async def confirm_payment(
             detail=f"Bu statusda to'lovni tasdiqlab bo'lmaydi: {current}",
         )
 
-    next_status = Order.StatusOrder.IS_PROCESS.value
+    next_status = Order.StatusOrder.PAID.value
     if body and body.next_status:
         allowed = {e.value for e in Order.StatusOrder}
         if body.next_status not in allowed:
@@ -181,32 +212,8 @@ async def confirm_payment(
             )
         next_status = body.next_status
 
-    lines = await OrderItem.get_order_items(order_id)
-    if not lines:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Buyurtmada mahsulot qatorlari yo'q",
-        )
-
     try:
-        for oi in lines:
-            res = await db.execute(
-                update(ProductItems)
-                .where(
-                    ProductItems.id == oi.product_item_id,
-                    ProductItems.total_count >= oi.count,
-                )
-                .values(total_count=ProductItems.total_count - oi.count)
-            )
-            if res.rowcount != 1:
-                await db.rollback()
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=(
-                        f"Omborda yetarli mahsulot yo'q (product_item_id={oi.product_item_id}, "
-                        f"kerak={oi.count})"
-                    ),
-                )
+        await _deduct_stock_for_order(order_id)
 
         await db.execute(
             update(Order)
@@ -226,10 +233,10 @@ async def confirm_payment(
     return {'ok': True, 'order_id': order_id, 'status': next_status}
 
 
-@order_router.patch('/{order_id}/status', name='Update order status (admin)', summary="Buyurtma statusini qo'lda yangilash (admin)")
+@order_router.patch('/{order_id}/status', name='Update order status (staff)', summary="Buyurtma statusini qo'lda yangilash (operator/admin)")
 async def update_order_status(
     order_id: int,
-    _: AdminAuth,
+    _: StaffAuth,
     new_status: str = Form(...),
 ):
     """Statusni qo'lda o'zgartirish (yetkazildi, bekor va hokazo). Ombor bilan bog'liq emas."""
@@ -244,9 +251,30 @@ async def update_order_status(
             detail=f"Ruxsat etilgan statuslar: {', '.join(sorted(allowed))}",
         )
 
+    current = _status_value(order.status)
+    paid_statuses = {
+        Order.StatusOrder.PAID.value,
+        Order.StatusOrder.IS_PROCESS.value,
+    }
+
+    # NEW -> (PAID yoki IS_PROCESS) bo'lganda ombordan avtomatik kamaytirish
+    should_deduct_stock = current == Order.StatusOrder.NEW.value and new_status in paid_statuses
+
     try:
+        if should_deduct_stock:
+            await _deduct_stock_for_order(order_id)
+
         await Order.update(order_id, status=new_status)
     except DBAPIError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Statusni yangilashda xatolik",
+        )
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception:
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Statusni yangilashda xatolik",

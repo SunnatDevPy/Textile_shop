@@ -17,7 +17,10 @@ Backend `FastAPI + PostgreSQL` asosida yozilgan va frontend bilan REST API orqal
   - `size`
 - Bannerlar (`banners`)
 - Buyurtmalar (`order`)
-- Admin login (`/login`, `/refresh`)
+- To'lov integratsiyasi (`/payments/...`) — Click va Payme callbacklari
+- Operator/Admin boshqaruvi (`/panel/...`)
+- Frontend bootstrap (`/frontend/bootstrap`)
+- Tizim tekshiruv endpointlari (`/system/health`, `/system/ready`)
 - Swagger hujjat: `/docs`
 
 ## Texnologiyalar
@@ -84,17 +87,25 @@ Prod:
 
 ## 3) Auth (juda muhim)
 
-Loyihada 2 xil auth bor:
+Loyihada **faqat HTTP Basic Auth** bor (JWT o'chirilgan).
 
-1. **HTTP Basic**  
-   Admin bilan himoyalangan CRUD endpointlar uchun ishlatiladi (`verify_admin_credentials`).
-   Frontendda `Authorization: Basic base64(username:password)` yuboriladi.
+- Header:
+  - `Authorization: Basic base64(username:password)`
+- Login ma'lumotlari:
+  - `super admin` (`.env` dagi `ADMIN_USERNAME` / `ADMIN_PASS`) — operator/admin yaratadi
+  - `admin/operator` — DB dagi `AdminUser` orqali kiradi (`username + operator_code`)
 
-2. **JWT**  
-   `/login` orqali token olish mumkin (`application/x-www-form-urlencoded`).
-   Token bo'lgan endpointlarda `Authorization: Bearer <token>` yuboriladi.
+### Rollar
 
-Eslatma: hozirgi admin CRUD endpointlarining ko'pi `HTTP Basic` bilan himoyalangan.
+- `super admin`:
+  - `POST /panel/operators` orqali user yaratadi
+- `admin`:
+  - katalogni boshqaradi (create/edit/delete)
+  - operatorlarni ko'radi/tahrirlaydi
+  - buyurtmalarni boshqaradi
+- `operator`:
+  - buyurtmalarni ko'radi va statusni boshqaradi
+  - katalogda delete (va hozirgi sozlamada create/edit ham) qilmaydi
 
 ## 4) Frontend uchun eng kerakli endpointlar
 
@@ -112,16 +123,42 @@ Eslatma: hozirgi admin CRUD endpointlarining ko'pi `HTTP Basic` bilan himoyalang
 - `GET /product-photos?product_id=...`
 - `GET /product-items?product_id=...`
 - `GET /product-details?product_id=...`
+- `GET /frontend/bootstrap` - frontend uchun bir so'rovda asosiy ma'lumotlar
 
 ### Buyurtma
 
 - `POST /order` - buyurtma yaratish (JSON)
-- `GET /order` - buyurtmalar ro'yxati
-- `GET /order/{order_id}` - buyurtma detali
-- `POST /order/{order_id}/confirm-payment` - to'lov tasdig'i va stock kamaytirish
-- `PATCH /order/{order_id}/status` - status o'zgartirish (admin/basic auth)
+- `GET /order` - buyurtmalar ro'yxati (operator/admin)
+- `GET /order/{order_id}` - buyurtma detali (operator/admin)
+- `POST /order/{order_id}/confirm-payment` - to'lov tasdig'i va stock kamaytirish (operator/admin)
+- `PATCH /order/{order_id}/status` - status o'zgartirish (operator/admin)
 
-### Admin CRUD (Basic auth talab qiladi)
+### Click va Payme (dokument topshirish oldidan test API)
+
+- `POST /payments/click/prepare` - Click uchun orderni tekshirish
+- `POST /payments/click/complete` - Click to'lovini yakunlash (`to'landi` + stock kamaytirish)
+- `POST /payments/payme/check` - Payme uchun orderni tekshirish
+- `POST /payments/payme/perform` - Payme to'lovini yakunlash (`to'landi` + stock kamaytirish)
+
+Eslatma:
+- Bu endpointlar callback/workflow uchun tayyorlangan.
+- Real prodga chiqishda Click/Payme imzo (signature) tekshiruvi qo'shilishi kerak.
+
+### Buyurtma statuslari
+
+- `yangi`
+- `to'landi`
+- `jarayonda`
+- `tayyor`
+- `yetkazilmoqda`
+- `yetkazildi`
+- `bekor qilindi`
+
+Muhim:
+- `yangi -> to'landi` yoki `yangi -> jarayonda` bo'lsa, ombordagi son avtomatik kamayadi.
+- `confirm-payment` ham stockni kamaytiradi (takror chaqirsa qayta kamaytirmaydi).
+
+### Admin endpointlar (Basic auth talab qiladi)
 
 - `POST/PATCH/DELETE /products...`
 - `POST/PATCH/DELETE /product-photos...`
@@ -131,7 +168,10 @@ Eslatma: hozirgi admin CRUD endpointlarining ko'pi `HTTP Basic` bilan himoyalang
 - `POST/PATCH/DELETE /collections...`
 - `POST/PATCH/DELETE /color...`
 - `POST/PATCH/DELETE /size...`
-- `POST/DELETE /banners...` (foydalanuvchi statusiga ham qaraydi)
+- `POST/DELETE /banners...`
+- `POST /panel/operators` (faqat super admin)
+- `GET /panel/users`, `PATCH /panel/users/{user_id}` (admin)
+- `GET /panel/me` (admin/operator)
 
 ## Frontenddan so'rov namunalari
 
@@ -163,20 +203,25 @@ const res = await fetch("http://localhost:8000/categories", {
 });
 ```
 
-### 3) Login va Bearer token olish
+### 3) Frontend bootstrap (bir so'rovda)
 
 ```js
-const body = new URLSearchParams();
-body.append("username", "admin");
-body.append("password", "1111");
+const res = await fetch("http://localhost:8000/frontend/bootstrap");
+const data = await res.json();
+```
 
-const res = await fetch("http://localhost:8000/login", {
+### 4) Click callback misol
+
+```js
+await fetch("http://localhost:8000/payments/click/complete", {
   method: "POST",
-  headers: { "Content-Type": "application/x-www-form-urlencoded" },
-  body,
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    order_id: 123,
+    transaction_id: "click_tx_001",
+    success: true
+  })
 });
-
-const token = await res.json();
 ```
 
 ## Muhim texnik eslatmalar
