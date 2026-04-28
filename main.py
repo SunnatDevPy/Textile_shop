@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -66,6 +67,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.mount("/admin", StaticFiles(directory="admin_panel", html=True), name="admin_panel")
+
+
+@app.get("/admin", include_in_schema=False)
+async def admin_root_redirect():
+    return RedirectResponse(url="/admin/")
 # app.add_middleware(
 #     # CORSMiddleware,
 #     # # allow_origins=["https://web.telegram.org", "https://your-client.com"],
@@ -95,22 +101,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.middleware("http")
-async def db_session_safety_middleware(request, call_next):
-    """
-    Global AsyncSession ishlatilayotgani uchun har requestdan keyin
-    transaction holatini tozalab turamiz, aks holda InFailedSQLTransactionError
-    keyingi endpointlarga ham o'tib ketishi mumkin.
-    """
-    try:
-        response = await call_next(request)
-    except Exception:
-        await db.rollback()
-        raise
-    await db.rollback()
-    return response
 
 
 @app.options("/{full_path:path}")

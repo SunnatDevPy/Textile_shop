@@ -33,6 +33,17 @@ class AsyncDatabaseSession:
     def __getattr__(self, name):
         return getattr(self._session, name)
 
+    async def execute(self, *args, **kwargs):
+        """
+        Har qanday SQL execute xatoliklarida sessionni "failed transaction"
+        holatida qoldirmaslik uchun rollback qilamiz.
+        """
+        try:
+            return await self._session.execute(*args, **kwargs)
+        except Exception:
+            await self._session.rollback()
+            raise
+
     def init(self):
         self._engine = create_async_engine(conf.db.db_url)
         self._session = sessionmaker(self._engine, expire_on_commit=False, class_=AsyncSession)()
