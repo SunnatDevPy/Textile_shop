@@ -11,6 +11,7 @@ from utils.audit import write_audit_log
 from utils.notifications import send_order_status_email
 from utils.response import ok_response
 from utils.security import enforce_ip_whitelist, enforce_rate_limit, verify_hmac_signature
+from utils.telegram_bot import send_order_status_notification
 
 payments_router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -74,6 +75,7 @@ async def _mark_order_as_paid(order: Order, next_status: str = Order.StatusOrder
             old_status=current,
             new_status=next_status,
         )
+        await send_order_status_notification(order_id=order.id, old_status=current, new_status=next_status)
     except HTTPException:
         await db.rollback()
         raise

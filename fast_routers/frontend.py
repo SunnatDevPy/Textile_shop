@@ -90,6 +90,7 @@ async def frontend_bootstrap(include_inactive: bool = False):
             "description_ru": p.description_ru,
             "description_eng": p.description_eng,
             "is_active": bool(p.is_active),
+            "clothing_type": str(getattr(p, "clothing_type", Product.ClothingType.MEN.value)),
             "price": int(p.price),
         }
         for p in products
@@ -202,9 +203,7 @@ async def frontend_bootstrap_normalized(include_inactive: bool = False):
     color_entities = {
         int(c.id): {
             "id": int(c.id),
-            "name_uz": c.name_uz,
-            "name_ru": c.name_ru,
-            "name_eng": c.name_eng,
+            "color_code": c.color_code,
         }
         for c in colors_all
         if int(c.id) in used_color_ids
@@ -230,6 +229,7 @@ async def frontend_bootstrap_normalized(include_inactive: bool = False):
             "description_ru": p.description_ru,
             "description_eng": p.description_eng,
             "is_active": bool(p.is_active),
+            "clothing_type": str(getattr(p, "clothing_type", Product.ClothingType.MEN.value)),
             "price": int(p.price),
             "item_ids": items_by_product.get(int(p.id), []),
             "photo_ids": photos_by_product.get(int(p.id), []),

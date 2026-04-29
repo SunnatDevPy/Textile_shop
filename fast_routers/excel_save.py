@@ -36,6 +36,7 @@ async def download_products_import_template(
                 "description_eng": "Description EN",
                 "price": 100000,
                 "is_active": True,
+                "clothing_type": "erkak",
             }
         ]
     )
@@ -81,6 +82,7 @@ async def import_products_from_excel(
             "description_eng",
             "price",
             "is_active",
+            "clothing_type",
         }
         missing = required_cols - set(df.columns)
         if missing:
@@ -115,7 +117,10 @@ async def import_products_from_excel(
                     "description_eng": str(row["description_eng"]).strip(),
                     "price": int(row["price"]),
                     "is_active": bool(row["is_active"]),
+                    "clothing_type": str(row["clothing_type"]).strip().lower(),
                 }
+                if payload["clothing_type"] not in {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value}:
+                    raise ValueError("clothing_type faqat 'erkak' yoki 'ayol' bo'lishi kerak")
 
                 product_id = row.get("id")
                 if pd.notna(product_id):

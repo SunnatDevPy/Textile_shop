@@ -44,6 +44,10 @@ class Configuration:
     SMTP_USER: str = os.getenv('SMTP_USER', '')
     SMTP_PASSWORD: str = os.getenv('SMTP_PASSWORD', '')
     SMTP_FROM_EMAIL: str = os.getenv('SMTP_FROM_EMAIL', os.getenv('SMTP_USER', ''))
+    TG_BOT_TOKEN: str = os.getenv('TG_BOT_TOKEN', '')
+    TG_GROUP_IDS: str = os.getenv('TG_GROUP_IDS', '')
+    TG_WEBHOOK_SECRET: str = os.getenv('TG_WEBHOOK_SECRET', '')
+    TG_WEBHOOK_URL: str = os.getenv('TG_WEBHOOK_URL', '')
 
 # class CustomFileSystemStorage(FileSystemStorage):
 #

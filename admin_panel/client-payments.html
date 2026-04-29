@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Preview - Payments</title>
+  <link rel="stylesheet" href="/admin/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Client Preview - To'lovlar</h1>
+      <p class="subtitle">To'lovlar oqimi va payment kesimlarini klientga ko'rsatish sahifasi</p>
+    </div>
+    <div class="auth-row">
+      <input id="baseUrl" placeholder="Base URL" />
+      <input id="username" placeholder="Username (admin/operator)" />
+      <input id="password" type="password" placeholder="Password" />
+      <button id="saveAuthBtn" class="btn-primary">Saqlash</button>
+      <a href="/admin/client-dashboard.html"><button>Dashboard sahifasi</button></a>
+    </div>
+  </header>
+
+  <main class="content">
+    <div id="statusLine" class="status-line">Tayyor</div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Payment breakdown</h3>
+        <div class="actions">
+          <button id="loadPaymentKpiBtn">Yuklash</button>
+        </div>
+        <pre id="paymentKpiOut" class="output"></pre>
+      </div>
+
+      <div class="card">
+        <h3>Buyurtma qidiruv (to'lov bo'yicha)</h3>
+        <form id="orderPaymentSearchForm" class="form">
+          <input name="payment" placeholder="click / payme / cash" />
+          <input name="status_q" placeholder="status (masalan to'landi)" />
+          <button type="submit">Qidirish</button>
+        </form>
+        <pre id="orderSearchOut" class="output"></pre>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Click test</h3>
+        <form id="clickPrepareForm" class="form">
+          <input name="order_id" required placeholder="order_id" />
+          <button type="submit">Click prepare</button>
+        </form>
+        <form id="clickCompleteForm" class="form">
+          <input name="order_id" required placeholder="order_id" />
+          <input name="transaction_id" required placeholder="transaction_id" />
+          <button type="submit">Click complete</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Payme test</h3>
+        <form id="paymeCheckForm" class="form">
+          <input name="order_id" required placeholder="order_id" />
+          <button type="submit">Payme check</button>
+        </form>
+        <form id="paymePerformForm" class="form">
+          <input name="order_id" required placeholder="order_id" />
+          <input name="transaction_id" required placeholder="transaction_id" />
+          <button type="submit">Payme perform</button>
+        </form>
+      </div>
+    </div>
+
+    <pre id="paymentOpsOut" class="output"></pre>
+  </main>
+
+  <script src="/admin/client-payments.js"></script>
+</body>
+</html>

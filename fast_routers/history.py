@@ -200,6 +200,33 @@ async def sales_stats(
                 "amount": int(row.amount or 0),
             }
 
+        gender_rows = (
+            await db.execute(
+                select(
+                    Product.clothing_type.label("clothing_type"),
+                    func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
+                    func.coalesce(func.sum(OrderItem.total), 0).label("sales_amount"),
+                )
+                .select_from(OrderItem)
+                .join(Order, Order.id == OrderItem.order_id)
+                .join(Product, Product.id == OrderItem.product_id)
+                .where(Order.status.in_(sold_statuses))
+                .where(and_(*sales_criteria) if sales_criteria else True)
+                .group_by(Product.clothing_type)
+            )
+        ).all()
+        sales_by_clothing_type = {
+            Product.ClothingType.MEN.value: {"sold_items": 0, "sales_amount": 0},
+            Product.ClothingType.WOMEN.value: {"sold_items": 0, "sales_amount": 0},
+        }
+        for row in gender_rows:
+            key = str(row.clothing_type or Product.ClothingType.MEN.value)
+            sales_by_clothing_type.setdefault(key, {"sold_items": 0, "sales_amount": 0})
+            sales_by_clothing_type[key] = {
+                "sold_items": int(row.sold_items or 0),
+                "sales_amount": int(row.sales_amount or 0),
+            }
+
         return ok_response(
             {
                 "from": date_from,
@@ -209,6 +236,7 @@ async def sales_stats(
                 "sold_items_count": int(sales_row.sold_items_count or 0),
                 "sales_amount": int(sales_row.sales_amount or 0),
                 "payment_breakdown": payment_breakdown,
+                "sales_by_clothing_type": sales_by_clothing_type,
                 "currency": "UZS",
             }
         )
@@ -563,6 +591,49 @@ async def dashboard_stats(
         for r in top_products_rows
     ]
 
+    inventory_row = (
+        await db.execute(
+            select(
+                func.coalesce(func.sum(ProductItems.total_count), 0).label("total_stock"),
+                func.coalesce(func.sum(ProductItems.total_count * Product.price), 0).label("total_inventory_value"),
+                func.count(func.distinct(Product.id)).label("products_count"),
+                func.count(ProductItems.id).label("sku_count"),
+            )
+            .select_from(ProductItems)
+            .join(Product, Product.id == ProductItems.product_id)
+        )
+    ).one()
+    inventory_summary = {
+        "products_count": int(inventory_row.products_count or 0),
+        "sku_count": int(inventory_row.sku_count or 0),
+        "total_stock": int(inventory_row.total_stock or 0),
+        "total_inventory_value": int(inventory_row.total_inventory_value or 0),
+    }
+
+    inventory_gender_rows = (
+        await db.execute(
+            select(
+                Product.clothing_type.label("clothing_type"),
+                func.coalesce(func.sum(ProductItems.total_count), 0).label("stock"),
+                func.coalesce(func.sum(ProductItems.total_count * Product.price), 0).label("inventory_value"),
+            )
+            .select_from(ProductItems)
+            .join(Product, Product.id == ProductItems.product_id)
+            .group_by(Product.clothing_type)
+        )
+    ).all()
+    inventory_by_clothing_type = {
+        Product.ClothingType.MEN.value: {"stock": 0, "inventory_value": 0},
+        Product.ClothingType.WOMEN.value: {"stock": 0, "inventory_value": 0},
+    }
+    for row in inventory_gender_rows:
+        key = str(row.clothing_type or Product.ClothingType.MEN.value)
+        inventory_by_clothing_type.setdefault(key, {"stock": 0, "inventory_value": 0})
+        inventory_by_clothing_type[key] = {
+            "stock": int(row.stock or 0),
+            "inventory_value": int(row.inventory_value or 0),
+        }
+
     return ok_response(
         {
             "generated_at": now.isoformat(),
@@ -571,6 +642,65 @@ async def dashboard_stats(
             "new_orders": new_orders,
             "low_stock": low_stock,
             "top_products": top_products,
+            "inventory_summary": inventory_summary,
+            "inventory_by_clothing_type": inventory_by_clothing_type,
+            "currency": "UZS",
+        }
+    )
+
+
+@history_router.get(
+    "/stats/inventory",
+    summary="Sklad statistikasi: jami stock va umumiy tovar qiymati",
+)
+async def inventory_stats(
+    request: Request,
+    _: AdminUser = Depends(verify_admin_credentials),
+):
+    enforce_rate_limit(request, scope="analytics")
+    row = (
+        await db.execute(
+            select(
+                func.coalesce(func.sum(ProductItems.total_count), 0).label("total_stock"),
+                func.coalesce(func.sum(ProductItems.total_count * Product.price), 0).label("total_inventory_value"),
+                func.count(func.distinct(Product.id)).label("products_count"),
+                func.count(ProductItems.id).label("sku_count"),
+            )
+            .select_from(ProductItems)
+            .join(Product, Product.id == ProductItems.product_id)
+        )
+    ).one()
+    by_gender_rows = (
+        await db.execute(
+            select(
+                Product.clothing_type.label("clothing_type"),
+                func.coalesce(func.sum(ProductItems.total_count), 0).label("stock"),
+                func.coalesce(func.sum(ProductItems.total_count * Product.price), 0).label("inventory_value"),
+            )
+            .select_from(ProductItems)
+            .join(Product, Product.id == ProductItems.product_id)
+            .group_by(Product.clothing_type)
+        )
+    ).all()
+    by_clothing_type = {
+        Product.ClothingType.MEN.value: {"stock": 0, "inventory_value": 0},
+        Product.ClothingType.WOMEN.value: {"stock": 0, "inventory_value": 0},
+    }
+    for r in by_gender_rows:
+        key = str(r.clothing_type or Product.ClothingType.MEN.value)
+        by_clothing_type.setdefault(key, {"stock": 0, "inventory_value": 0})
+        by_clothing_type[key] = {
+            "stock": int(r.stock or 0),
+            "inventory_value": int(r.inventory_value or 0),
+        }
+
+    return ok_response(
+        {
+            "products_count": int(row.products_count or 0),
+            "sku_count": int(row.sku_count or 0),
+            "total_stock": int(row.total_stock or 0),
+            "total_inventory_value": int(row.total_inventory_value or 0),
+            "by_clothing_type": by_clothing_type,
             "currency": "UZS",
         }
     )

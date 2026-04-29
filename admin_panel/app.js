@@ -119,6 +119,16 @@ function bindDashboard() {
     }
   });
 
+  document.getElementById("loadInventoryBtn").addEventListener("click", async () => {
+    try {
+      const data = await api("/history/stats/inventory");
+      out("dashboardOut", data);
+      setStatus("Sklad stats loaded.");
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+
   document.getElementById("loadBootstrapBtn").addEventListener("click", async () => {
     try {
       const data = await api("/frontend/bootstrap");
@@ -273,6 +283,9 @@ function bindLookups() {
     const form = new FormData();
     if (type === "size") {
       form.set("name", fd.get("name"));
+    } else if (type === "color") {
+      const colorCode = String(fd.get("color_code") || "").trim();
+      if (colorCode) form.set("color_code", colorCode);
     } else {
       ["name_uz", "name_ru", "name_eng"].forEach((k) => {
         const v = fd.get(k);

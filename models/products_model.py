@@ -25,9 +25,7 @@ class Collection(BaseModel):
                                                      back_populates='collection')
 
 class Color(BaseModel):
-    name_uz: Mapped[str] = mapped_column(VARCHAR(255))
-    name_ru: Mapped[str] = mapped_column(VARCHAR(255))
-    name_eng: Mapped[str] = mapped_column(VARCHAR(255))
+    color_code: Mapped[str] = mapped_column(VARCHAR(255))
 
 
 class Size(BaseModel):
@@ -35,6 +33,10 @@ class Size(BaseModel):
 
 
 class Product(BaseModel):
+    class ClothingType(str, Enum):
+        MEN = "erkak"
+        WOMEN = "ayol"
+
     category_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("categories.id", ondelete='CASCADE'))
     collection_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("collections.id", ondelete='CASCADE'))
 
@@ -46,6 +48,7 @@ class Product(BaseModel):
     description_ru: Mapped[str] = mapped_column(String(255))
     description_eng: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool]
+    clothing_type: Mapped[str] = mapped_column(String(20), default=ClothingType.MEN.value)
 
     price: Mapped[int] = mapped_column(BigInteger)
 

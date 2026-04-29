@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from sqlalchemy import text
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -25,6 +26,7 @@ from fast_routers.admin_users import admin_user_router
 from fast_routers.payments import payments_router
 from fast_routers.excel_save import excel_router
 from fast_routers.history import history_router
+from fast_routers.telegram_bot import telegram_router
 from models import db
 
 
@@ -47,7 +49,15 @@ async def lifespan(app: FastAPI):
     app.include_router(payments_router)
     app.include_router(excel_router)
     app.include_router(history_router)
+    app.include_router(telegram_router)
     await db.create_all()
+    # Legacy DBlar uchun color_code ustunini avtomatik qo'shamiz.
+    await db.execute(text("ALTER TABLE colors ADD COLUMN IF NOT EXISTS color_code VARCHAR(255)"))
+    await db.execute(text("UPDATE colors SET color_code = COALESCE(color_code, '#000000')"))
+    # Legacy DBlar uchun clothing_type ustunini qo'shamiz.
+    await db.execute(text("ALTER TABLE products ADD COLUMN IF NOT EXISTS clothing_type VARCHAR(20)"))
+    await db.execute(text("UPDATE products SET clothing_type = COALESCE(clothing_type, 'erkak')"))
+    await db.commit()
     yield
 
 

@@ -16,6 +16,7 @@ from utils.audit import write_audit_log
 from utils.notifications import send_order_status_email
 from utils.response import ok_response
 from utils.security import enforce_rate_limit
+from utils.telegram_bot import send_new_order_notification, send_order_status_notification
 
 order_router = APIRouter(prefix='/order', tags=['Orders'])
 
@@ -254,6 +255,14 @@ async def create_order(request: Request, payload: CreateOrderPayload):
             detail="Buyurtma qatorlarini saqlashda xatolik",
         )
 
+    total_sum = sum(int(getattr(oi, "total", 0) or 0) for oi in order_items)
+    await send_new_order_notification(
+        order_id=int(order.id),
+        contact=order.contact,
+        total_sum=total_sum,
+        items_count=len(order_items),
+    )
+
     return ok_response(
         {
             'order_id': order.id,
@@ -324,6 +333,7 @@ async def confirm_payment(
             old_status=current,
             new_status=next_status,
         )
+        await send_order_status_notification(order_id=order_id, old_status=current, new_status=next_status)
     except HTTPException:
         raise
     except Exception:
@@ -388,6 +398,7 @@ async def update_order_status(
             old_status=current,
             new_status=new_status,
         )
+        await send_order_status_notification(order_id=order_id, old_status=current, new_status=new_status)
     except DBAPIError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -18,6 +18,7 @@
       <input id="password" type="password" placeholder="Password / operator_code" />
       <button id="saveAuthBtn" class="btn-primary">Saqlash</button>
       <button id="checkMeBtn">Auth tekshirish</button>
+      <a href="/admin/client-dashboard.html"><button type="button">Client preview</button></a>
     </div>
   </header>
 
@@ -44,6 +45,7 @@
         <div class="actions">
           <button id="loadHealthBtn">Health + Ready</button>
           <button id="loadDashBtn">Savdo KPI</button>
+          <button id="loadInventoryBtn">Sklad KPI</button>
           <button id="loadBootstrapBtn">Frontend Bootstrap</button>
         </div>
         <pre id="dashboardOut" class="output"></pre>
@@ -109,6 +111,10 @@
               <input name="description_ru" required placeholder="description_ru" />
               <input name="description_eng" required placeholder="description_eng" />
               <input name="price" required placeholder="price" />
+              <select name="clothing_type">
+                <option value="erkak">erkak</option>
+                <option value="ayol">ayol</option>
+              </select>
               <input name="is_active" placeholder="is_active (true/false)" />
               <button type="submit">Mahsulot yaratish</button>
             </form>
@@ -143,6 +149,7 @@
               <input name="name_ru" placeholder="name_ru" />
               <input name="name_eng" placeholder="name_eng" />
               <input name="name" placeholder="name (size uchun)" />
+              <input name="color_code" placeholder="color_code (#FF0000)" />
               <button type="submit">Tanlangan katalogga qo'shish</button>
             </form>
           </div>

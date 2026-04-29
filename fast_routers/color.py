@@ -1,4 +1,4 @@
-from typing import Optional, Annotated, List
+from typing import Optional, Annotated
 
 from fastapi import APIRouter, Form, HTTPException
 from fastapi import Response
@@ -8,36 +8,25 @@ from sqlalchemy.exc import DBAPIError
 from starlette import status
 
 from fast_routers.admin_auth import require_admin
-from models import AdminUser, Category, Collection, Color
-from utils.base_models_pydantic import ProductList
+from models import AdminUser, Color
 
 color_router = APIRouter(prefix='/color', tags=['Color'])
 
 
 class ListColorModel(BaseModel):
     id: int
-    name_uz: str
-    name_ru: str
-    name_eng: str
-    products: Optional[List['ProductList']] = None
-
-
-ListColorModel.model_rebuild()
+    color_code: str
 
 
 class UpdateOrCreateColorModel(BaseModel):
-    name_uz: Optional[str] = None
-    name_ru: Optional[str] = None
-    name_eng: Optional[str] = None
+    color_code: Optional[str] = None
 
     @classmethod
     def as_form(
             cls,
-            name_uz: Optional[str] = Form(None),
-            name_ru: Optional[str] = Form(None),
-            name_eng: Optional[str] = Form(None),
+            color_code: Optional[str] = Form(None),
     ):
-        return cls(name_uz=name_uz, name_ru=name_ru, name_eng=name_eng)
+        return cls(color_code=color_code)
 
 
 @color_router.get(path='', name="Color", summary="Ranglar ro'yxati")

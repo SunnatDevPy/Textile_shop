@@ -60,6 +60,7 @@ async def search_products_advanced(
     is_active: Optional[bool] = None,
     min_price: Optional[int] = None,
     max_price: Optional[int] = None,
+    clothing_type: Optional[str] = None,
     limit: int = 100,
 ):
     query = select(Product)
@@ -80,6 +81,8 @@ async def search_products_advanced(
         criteria.append(Product.price >= min_price)
     if max_price is not None:
         criteria.append(Product.price <= max_price)
+    if clothing_type is not None:
+        criteria.append(Product.clothing_type == clothing_type)
     if criteria:
         query = query.where(and_(*criteria))
 
@@ -117,6 +120,7 @@ async def create_product(
     description_eng: str = Form(),
     price: int = Form(),
     is_active: bool = Form(True),
+    clothing_type: str = Form(Product.ClothingType.MEN.value),
     photo: Optional[UploadFile] = File(default=None),
 ):
     category = await Category.get_or_none(category_id)
@@ -127,6 +131,12 @@ async def create_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Collection topilmadi')
     if photo is not None:
         _require_image_upload(photo)
+    allowed_clothing_types = {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value}
+    if clothing_type not in allowed_clothing_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"clothing_type faqat: {', '.join(sorted(allowed_clothing_types))}",
+        )
 
     try:
         product = await Product.create(
@@ -140,6 +150,7 @@ async def create_product(
             description_eng=description_eng,
             price=price,
             is_active=is_active,
+            clothing_type=clothing_type,
         )
     except DBAPIError:
         raise HTTPException(
@@ -173,6 +184,7 @@ async def update_product(
     description_eng: Optional[str] = Form(None),
     price: Optional[int] = Form(None),
     is_active: Optional[bool] = Form(None),
+    clothing_type: Optional[str] = Form(None),
     photo: Optional[UploadFile] = File(default=None),
 ):
     product = await Product.get_or_none(product_id)
@@ -188,6 +200,13 @@ async def update_product(
 
     if photo is not None:
         _require_image_upload(photo)
+    if clothing_type is not None:
+        allowed_clothing_types = {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value}
+        if clothing_type not in allowed_clothing_types:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"clothing_type faqat: {', '.join(sorted(allowed_clothing_types))}",
+            )
 
     update_data = {
         k: v
@@ -202,6 +221,7 @@ async def update_product(
             'description_eng': description_eng,
             'price': price,
             'is_active': is_active,
+            'clothing_type': clothing_type,
         }.items()
         if v is not None
     }

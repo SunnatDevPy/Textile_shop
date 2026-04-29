@@ -24,6 +24,7 @@ Backend quyidagilarni boshqaradi:
 - Tarix (`/history/*`)
 - Tizim endpointlari (`/system/*`)
 - Frontend bootstrap (`/frontend/bootstrap`)
+- Telegram bot (aiogram, guruh bildirishnomalari)
 
 ---
 
@@ -278,6 +279,7 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
   - `name_uz`, `name_ru`, `name_eng` (str, required)
   - `description_uz`, `description_ru`, `description_eng` (str, required)
   - `price` (int, required)
+  - `clothing_type` (`erkak` yoki `ayol`, required)
   - `is_active` (bool, optional, default `true`)
   - `photo` (file, optional, faqat image)
 - Qaytadi:
@@ -290,6 +292,7 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 - Content-Type: `multipart/form-data`
 - Yuboriladi (ixtiyoriy form fieldlar):
   - `category_id`, `collection_id`, `name_uz`, `name_ru`, `name_eng`, `description_uz`, `description_ru`, `description_eng`, `price`, `is_active`, `photo`
+  - `clothing_type` (`erkak` yoki `ayol`)
 - Qaytadi:
 ```json
 { "ok": true }
@@ -494,14 +497,14 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 - Vazifa: rang yaratish.
 - Content-Type: `multipart/form-data`
 - Yuboriladi:
-  - `name_uz`, `name_ru`, `name_eng`
+  - `color_code` (text, masalan `#FF0000` yoki `red-500`)
 - Qaytadi: `{ "ok": true, "data": { } }`
 
 ### `PATCH /color/{color_id}` (Admin)
 - Vazifa: rangni yangilash.
 - Content-Type: `multipart/form-data`
 - Yuboriladi (ixtiyoriy):
-  - `name_uz`, `name_ru`, `name_eng`
+  - `color_code`
 - Qaytadi: `{ "ok": true, "data": { } }`
 
 ### `DELETE /color/{color_id}` (Admin)
@@ -692,6 +695,27 @@ Ruxsat etilgan statuslar:
 
 ---
 
+## Telegram Bot (`/telegram`)
+
+- Yangi buyurtma yaratilganda bot guruhga xabar yuboradi.
+- Order status o'zgarganda (to'lov/status update/callback) bot guruhga status xabari yuboradi.
+- Guruh xabaridagi **Qabul qildim** tugmasi bosilganda order `yangi -> jarayonda` bo'ladi (stock kamayadi) va email yuboriladi.
+
+### `POST /telegram/set-webhook` (Admin)
+- Bot webhook URLni Telegramga yuboradi (`TG_WEBHOOK_URL` va `TG_BOT_TOKEN` kerak).
+
+### `POST /telegram/webhook` (Public, Telegram callback)
+- Telegram update'larni qabul qiladi.
+- `TG_WEBHOOK_SECRET` berilgan bo'lsa, header orqali tekshiradi.
+
+Kerakli `.env`:
+- `TG_BOT_TOKEN=...`
+- `TG_GROUP_IDS=-1001234567890,-1009876543210`
+- `TG_WEBHOOK_URL=https://your-domain.com/telegram/webhook`
+- `TG_WEBHOOK_SECRET=optional-secret`
+
+---
+
 ## 4.14 Panel API (`/panel`)
 
 ### `POST /panel/operators` (Super admin)
@@ -810,6 +834,10 @@ Ruxsat etilgan statuslar:
       "payme": { "orders_count": 35, "items_count": 90, "amount": 45000000 },
       "cash": { "orders_count": 20, "items_count": 50, "amount": 30000000 }
     },
+    "sales_by_clothing_type": {
+      "erkak": { "sold_items": 120, "sales_amount": 70000000 },
+      "ayol": { "sold_items": 90, "sales_amount": 55000000 }
+    },
     "currency": "UZS"
   },
   "meta": {},
@@ -850,6 +878,14 @@ Ruxsat etilgan statuslar:
   - `new_orders` (status=`yangi`)
   - `low_stock` (kam qolgan variantlar)
   - `top_products` (eng ko'p sotilgan mahsulotlar)
+  - `inventory_summary` (jami mahsulot/sku/stock/umumiy tovar qiymati)
+  - `inventory_by_clothing_type` (`erkak`/`ayol` kesimida sklad qiymati)
+
+### `GET /history/stats/inventory`
+- Vazifa: mini sklad statistikasi (jami dona va umumiy tovar summasi).
+- Qaytadi (`ok_response`) ichida:
+  - `products_count`, `sku_count`, `total_stock`, `total_inventory_value`
+  - `by_clothing_type.erkak|ayol` (`stock`, `inventory_value`)
 
 ---
 
@@ -868,6 +904,27 @@ Ruxsat etilgan statuslar:
 ```bash
 pytest tests/integration -q
 ```
+
+---
+
+## Telegram Bot (aiogram)
+
+- Bot entrypoint: `bot.py` (ichida `bot_app.main` chaqiriladi)
+- Modul arxitektura:
+  - `bot_app/main.py` - run/polling start
+  - `bot_app/core.py` - bot + dispatcher yig'ish
+  - `bot_app/handlers/order_callbacks.py` - callback handlerlar
+  - `bot_app/services/order_flow.py` - order status/stock biznes logikasi
+- Docker compose ichida alohida servis: `bot`
+- Vazifasi:
+  - yangi buyurtma haqida guruhga xabar yuborish
+  - order status o'zgarsa guruhga xabar yuborish
+  - guruhdagi **Qabul qildim** tugmasi orqali `yangi -> jarayonda` statusga o'tkazish
+  - shu paytda email xabari ham yuboriladi
+
+Ishga tushirish:
+- Docker: `docker compose up -d --build` (app + db + bot)
+- Lokal bot: `py -3 bot.py`
 
 ---
 

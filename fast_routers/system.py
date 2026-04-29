@@ -106,9 +106,7 @@ async def seed_fake_data(
         created["collections"] += 1
 
         clr = await Color.create(
-            name_uz=f"Rang {i}",
-            name_ru=f"Цвет {i}",
-            name_eng=f"Color {i}",
+            color_code=f"#AA{i:02d}{(i*7)%99:02d}",
         )
         colors.append(clr)
         created["colors"] += 1
@@ -129,6 +127,7 @@ async def seed_fake_data(
             description_eng=f"Fake description {i}",
             price=100000 + (i * 10000),
             is_active=True,
+            clothing_type=Product.ClothingType.MEN.value if i % 2 else Product.ClothingType.WOMEN.value,
         )
         products.append(p)
         created["products"] += 1
