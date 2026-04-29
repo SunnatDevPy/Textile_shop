@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Textile Demo Home</title>
+  <link rel="stylesheet" href="/admin/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Textile Shop Demo</h1>
+      <p class="subtitle">Главная страница для показа клиенту</p>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="card">
+      <h2 style="margin:0 0 8px">Быстрый сценарий показа</h2>
+      <p class="help">
+        1) Откройте клиентский dashboard для KPI и складских метрик.<br />
+        2) Покажите страницу платежей и поток Click/Payme.<br />
+        3) Перейдите в админку для CRUD и управления заказами.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Куда перейти</h3>
+      <p class="help">Выберите нужную часть системы для демонстрации.</p>
+      <div class="actions">
+        <a href="/admin/client-dashboard.html"><button class="btn-primary">Клиентская часть (Dashboard)</button></a>
+        <a href="/admin/client-payments.html"><button>Клиентская часть (Платежи)</button></a>
+        <a href="/admin/"><button>Админ часть</button></a>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Что видно клиенту</h3>
+        <p class="help">
+          - Продажи и KPI<br />
+          - Склад: остатки и общая стоимость товара<br />
+          - Разрез по типу одежды: мужская / женская
+        </p>
+      </div>
+      <div class="card">
+        <h3>Что видно администратору</h3>
+        <p class="help">
+          - Управление товарами, заказами, каталогами<br />
+          - Поиск и фильтры<br />
+          - История, статистика, платежные callback test
+        </p>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

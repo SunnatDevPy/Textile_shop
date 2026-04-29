@@ -81,7 +81,7 @@ app.mount("/admin", StaticFiles(directory="admin_panel", html=True), name="admin
 
 @app.get("/admin", include_in_schema=False)
 async def admin_root_redirect():
-    return RedirectResponse(url="/admin/")
+    return RedirectResponse(url="/admin/home.html")
 # app.add_middleware(
 #     # CORSMiddleware,
 #     # # allow_origins=["https://web.telegram.org", "https://your-client.com"],
