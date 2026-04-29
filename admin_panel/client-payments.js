@@ -18,20 +18,14 @@ function out(id, data) {
   document.getElementById(id).textContent = typeof data === "string" ? data : pretty(data);
 }
 
-function bindExpandButtons() {
-  document.querySelectorAll(".output").forEach((output) => {
-    const toolbar = document.createElement("div");
-    toolbar.className = "output-toolbar";
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "expand-btn";
-    btn.textContent = "Razvernut";
+function bindLoadToggleExpand() {
+  document.querySelectorAll("button").forEach((btn) => {
+    if (btn.textContent.trim() !== "Yuklash") return;
     btn.addEventListener("click", () => {
-      const isExpanded = output.classList.toggle("expanded");
-      btn.textContent = isExpanded ? "Svernut" : "Razvernut";
+      const card = btn.closest(".card");
+      const output = card ? card.querySelector(".output") : null;
+      if (output) output.classList.toggle("expanded");
     });
-    toolbar.appendChild(btn);
-    output.parentNode.insertBefore(toolbar, output);
   });
 }
 
@@ -61,7 +55,7 @@ function saveAuth() {
 }
 
 function init() {
-  bindExpandButtons();
+  bindLoadToggleExpand();
   document.getElementById("baseUrl").value = state.baseUrl;
   document.getElementById("username").value = state.username;
   document.getElementById("password").value = state.password;

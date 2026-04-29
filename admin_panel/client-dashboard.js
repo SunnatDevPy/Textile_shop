@@ -18,20 +18,14 @@ function out(id, data) {
   document.getElementById(id).textContent = typeof data === "string" ? data : pretty(data);
 }
 
-function bindExpandButtons() {
-  document.querySelectorAll(".output").forEach((output) => {
-    const toolbar = document.createElement("div");
-    toolbar.className = "output-toolbar";
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "expand-btn";
-    btn.textContent = "Razvernut";
+function bindLoadToggleExpand() {
+  document.querySelectorAll("button").forEach((btn) => {
+    if (btn.textContent.trim() !== "Yuklash") return;
     btn.addEventListener("click", () => {
-      const isExpanded = output.classList.toggle("expanded");
-      btn.textContent = isExpanded ? "Svernut" : "Razvernut";
+      const card = btn.closest(".card");
+      const output = card ? card.querySelector(".output") : null;
+      if (output) output.classList.toggle("expanded");
     });
-    toolbar.appendChild(btn);
-    output.parentNode.insertBefore(toolbar, output);
   });
 }
 
@@ -72,7 +66,7 @@ function saveAuth() {
 }
 
 function init() {
-  bindExpandButtons();
+  bindLoadToggleExpand();
   document.getElementById("baseUrl").value = state.baseUrl;
   document.getElementById("username").value = state.username;
   document.getElementById("password").value = state.password;
@@ -84,10 +78,10 @@ function init() {
       const data = await api("/history/stats/dashboard");
       const d = data?.data || {};
       renderCards("mainKpiCards", [
-        { label: "Today revenue", value: d.today_sales?.revenue ?? 0 },
-        { label: "Week revenue", value: d.week_sales?.revenue ?? 0 },
-        { label: "New orders", value: d.new_orders ?? 0 },
-        { label: "Low stock rows", value: (d.low_stock || []).length },
+        { label: "Bugungi tushum", value: d.today_sales?.revenue ?? 0 },
+        { label: "Haftalik tushum", value: d.week_sales?.revenue ?? 0 },
+        { label: "Yangi buyurtmalar", value: d.new_orders ?? 0 },
+        { label: "Kam qolgan pozitsiyalar", value: (d.low_stock || []).length },
       ]);
       out("mainKpiOut", data);
       setStatus("Asosiy KPI yuklandi");
@@ -101,10 +95,10 @@ function init() {
       const data = await api("/history/stats/inventory");
       const d = data?.data || {};
       renderCards("inventoryCards", [
-        { label: "Products", value: d.products_count ?? 0 },
+        { label: "Mahsulotlar", value: d.products_count ?? 0 },
         { label: "SKU", value: d.sku_count ?? 0 },
-        { label: "Total stock", value: d.total_stock ?? 0 },
-        { label: "Inventory value", value: d.total_inventory_value ?? 0 },
+        { label: "Jami qoldiq", value: d.total_stock ?? 0 },
+        { label: "Ombor qiymati", value: d.total_inventory_value ?? 0 },
       ]);
       out("inventoryOut", data);
       setStatus("Sklad KPI yuklandi");

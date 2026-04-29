@@ -33,7 +33,8 @@
       <div class="nav-group-title">Boshqaruv</div>
       <button class="tab-btn" data-tab="panelTab">Admin / Operator</button>
       <button class="tab-btn" data-tab="historyTab">Tarix va Analitika</button>
-      <button class="tab-btn" data-tab="paymentsTab">Payment test</button>
+      <button class="tab-btn" data-tab="devTab">Texnik vositalar</button>
+      <button class="tab-btn" data-tab="paymentsTab">To'lov testi</button>
       <button class="tab-btn" data-tab="excelTab">Excel import</button>
     </aside>
 
@@ -44,7 +45,7 @@
         <h2>Dashboard</h2>
         <p class="help">Tizim holatini tekshiradi, KPI statistikani va frontend bootstrap ma'lumotlarini ko'rsatadi.</p>
         <div class="actions">
-          <button id="loadHealthBtn">Health + Ready</button>
+          <button id="loadHealthBtn">Sog'liq + Tayyorlik</button>
           <button id="loadDashBtn">Savdo KPI</button>
           <button id="loadInventoryBtn">Sklad KPI</button>
           <button id="loadBootstrapBtn">Frontend Bootstrap</button>
@@ -94,7 +95,7 @@
             <h3>Ko'rish endpointlari</h3>
             <div class="actions">
               <button id="listProductsBtn">Mahsulotlar</button>
-              <button id="searchProductsBtn">Search</button>
+              <button id="searchProductsBtn">Qidiruv</button>
               <button id="listItemsBtn">Product items</button>
               <button id="listDetailsBtn">Product details</button>
               <button id="listPhotosBtn">Product photos</button>
@@ -202,6 +203,32 @@
         <pre id="historyOut" class="output"></pre>
       </div>
 
+      <div id="devTab" class="tab">
+        <h2>Texnik vositalar</h2>
+        <p class="help">Test uchun fake ma'lumotlar yaratish/tozalash (super admin uchun).</p>
+        <div class="grid2">
+          <div class="card">
+            <h3>Seed fake data</h3>
+            <form id="seedFakeForm" class="form">
+              <input name="n" type="number" min="1" max="20" value="3" placeholder="n (1..20)" />
+              <select name="clear_before">
+                <option value="false">clear_before=false</option>
+                <option value="true">clear_before=true</option>
+              </select>
+              <button type="submit">POST /system/dev/seed-fake</button>
+            </form>
+          </div>
+          <div class="card">
+            <h3>Clear fake data</h3>
+            <p class="help">Barcha fake/test yozuvlarni tozalaydi.</p>
+            <div class="actions">
+              <button id="clearFakeBtn">DELETE /system/dev/clear-fake</button>
+            </div>
+          </div>
+        </div>
+        <pre id="devOut" class="output"></pre>
+      </div>
+
       <div id="paymentsTab" class="tab">
         <h2>Payments Test</h2>
         <p class="help">Click/Payme callback endpointlarini qo'lda test qilish uchun texnik bo'lim.</p>
@@ -247,7 +274,7 @@
         <p class="help">Product import uchun shablon yuklash va excel faylni yuklab import qilish.</p>
         <div class="grid2">
           <div class="card">
-            <h3>Template</h3>
+            <h3>Shablon</h3>
             <button id="downloadTemplateBtn">Shablonni yuklash</button>
           </div>
           <div class="card">

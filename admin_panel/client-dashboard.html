@@ -3,22 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Client Preview - Dashboard</title>
+  <title>Mijoz Preview - Dashboard</title>
   <link rel="stylesheet" href="/admin/styles.css" />
 </head>
 <body>
   <header class="topbar">
     <div>
-      <h1>Client Preview - Dashboard</h1>
+      <h1>Mijoz Preview - Dashboard</h1>
       <p class="subtitle">Klientga ko'rsatish uchun real API ma'lumotli dashboard</p>
     </div>
     <div class="auth-row">
-      <input id="baseUrl" placeholder="Base URL" />
+      <input id="baseUrl" placeholder="Asosiy URL" />
       <input id="username" placeholder="Username (admin/operator)" />
       <input id="password" type="password" placeholder="Password" />
       <button id="saveAuthBtn" class="btn-primary">Saqlash</button>
       <a href="/admin/client-payments.html"><button>To'lovlar sahifasi</button></a>
-      <a href="/admin/home.html"><button>Назад</button></a>
+      <a href="/admin/home.html"><button>Orqaga</button></a>
     </div>
   </header>
 
@@ -76,7 +76,7 @@
 
     <div class="grid2">
       <div class="card">
-        <h3>Products API</h3>
+        <h3>Mahsulotlar API</h3>
         <div class="actions">
           <button id="loadProductsBtn">/products</button>
           <button id="loadProductSearchBtn">/products/search</button>
@@ -88,7 +88,7 @@
       </div>
 
       <div class="card">
-        <h3>Orders API</h3>
+        <h3>Buyurtmalar API</h3>
         <form id="ordersFilterForm" class="form">
           <input name="status_q" placeholder="status_q (ixtiyoriy)" />
           <input name="payment" placeholder="payment (click/payme/cash)" />
@@ -103,7 +103,7 @@
 
     <div class="grid2">
       <div class="card">
-        <h3>Lookup API</h3>
+        <h3>Ma'lumotnoma API</h3>
         <div class="actions">
           <button id="loadCategoriesBtn">/categories</button>
           <button id="loadCollectionsBtn">/collections</button>

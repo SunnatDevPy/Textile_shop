@@ -74,7 +74,7 @@ function saveAuth() {
   localStorage.setItem("admin_base_url", state.baseUrl);
   localStorage.setItem("admin_username", state.username);
   localStorage.setItem("admin_password", state.password);
-  setStatus("Auth saved.");
+  setStatus("Auth ma'lumotlari saqlandi.");
 }
 
 function toFormData(form) {
@@ -85,29 +85,12 @@ function parseBool(v) {
   return String(v).toLowerCase() === "true";
 }
 
-function bindExpandButtons() {
-  document.querySelectorAll(".output").forEach((output) => {
-    const toolbar = document.createElement("div");
-    toolbar.className = "output-toolbar";
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "expand-btn";
-    btn.textContent = "Razvernut";
-    btn.addEventListener("click", () => {
-      const isExpanded = output.classList.toggle("expanded");
-      btn.textContent = isExpanded ? "Svernut" : "Razvernut";
-    });
-    toolbar.appendChild(btn);
-    output.parentNode.insertBefore(toolbar, output);
-  });
-}
-
 function bindGlobalActions() {
   document.getElementById("saveAuthBtn").addEventListener("click", saveAuth);
   document.getElementById("checkMeBtn").addEventListener("click", async () => {
     try {
       const data = await api("/panel/me");
-      setStatus("Auth is valid.");
+      setStatus("Autentifikatsiya to'g'ri.");
       out("panelOut", data);
     } catch (e) {
       setStatus(e.message, true);
@@ -489,8 +472,8 @@ function bindExcel() {
       link.href = URL.createObjectURL(blob);
       link.download = "products_import_template.xlsx";
       link.click();
-      out("excelOut", "Template downloaded.");
-      setStatus("Excel template downloaded.");
+      out("excelOut", "Shablon yuklab olindi.");
+      setStatus("Excel shabloni yuklab olindi.");
     } catch (e) {
       setStatus(e.message, true);
     }
@@ -515,7 +498,6 @@ function bindExcel() {
 
 function init() {
   fillAuthInputs();
-  bindExpandButtons();
   bindTabs();
   bindGlobalActions();
   bindDashboard();
