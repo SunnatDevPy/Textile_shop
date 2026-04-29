@@ -1,7 +1,9 @@
+import csv
+import io
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import and_, select
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
@@ -13,6 +15,15 @@ from utils.response import ok_response
 shop_product_router = APIRouter(prefix='/products', tags=['Products'])
 
 AdminOnlyAuth = Annotated[AdminUser, Depends(require_admin)]
+
+PRODUCT_SORT_FIELDS = {
+    "id": Product.id,
+    "created_at": Product.created_at,
+    "name_uz": Product.name_uz,
+    "price": Product.price,
+    "is_active": Product.is_active,
+    "clothing_type": Product.clothing_type,
+}
 
 
 def _require_image_upload(photo: UploadFile) -> None:
@@ -105,6 +116,144 @@ async def get_product(product_id: int):
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Product topilmadi')
     return {'product': product}
+
+
+@shop_product_router.get('/admin-table', summary="Mahsulotlar admin jadvali: pagination + sort + filter")
+async def products_admin_table(
+    _: AdminOnlyAuth,
+    page: int = 1,
+    page_size: int = 20,
+    sort_by: str = "created_at",
+    sort_dir: str = "desc",
+    search: Optional[str] = None,
+    category_id: Optional[int] = None,
+    collection_id: Optional[int] = None,
+    is_active: Optional[bool] = None,
+    min_price: Optional[int] = None,
+    max_price: Optional[int] = None,
+    clothing_type: Optional[str] = None,
+):
+    page = max(1, int(page))
+    page_size = max(1, min(int(page_size), 200))
+    sort_col = PRODUCT_SORT_FIELDS.get(sort_by, Product.created_at)
+    sort_expr = desc(sort_col) if str(sort_dir).lower() == "desc" else asc(sort_col)
+
+    criteria = []
+    if search:
+        s = f"%{search}%"
+        criteria.append((Product.name_uz.ilike(s)) | (Product.name_ru.ilike(s)) | (Product.name_eng.ilike(s)))
+    if category_id is not None:
+        criteria.append(Product.category_id == category_id)
+    if collection_id is not None:
+        criteria.append(Product.collection_id == collection_id)
+    if is_active is not None:
+        criteria.append(Product.is_active == is_active)
+    if min_price is not None:
+        criteria.append(Product.price >= min_price)
+    if max_price is not None:
+        criteria.append(Product.price <= max_price)
+    if clothing_type is not None:
+        criteria.append(Product.clothing_type == clothing_type)
+
+    where_clause = and_(*criteria) if criteria else None
+    count_q = select(func.count(Product.id))
+    data_q = select(Product).order_by(sort_expr).offset((page - 1) * page_size).limit(page_size)
+    if where_clause is not None:
+        count_q = count_q.where(where_clause)
+        data_q = data_q.where(where_clause)
+
+    total = int((await db.execute(count_q)).scalar() or 0)
+    rows = (await db.execute(data_q)).scalars().all()
+    total_pages = (total + page_size - 1) // page_size if total else 0
+
+    chips = []
+    for key, value in {
+        "search": search,
+        "category_id": category_id,
+        "collection_id": collection_id,
+        "is_active": is_active,
+        "min_price": min_price,
+        "max_price": max_price,
+        "clothing_type": clothing_type,
+    }.items():
+        if value not in (None, ""):
+            chips.append({"key": key, "value": str(value)})
+
+    return ok_response(
+        rows,
+        meta={
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": total_pages,
+            "sort_by": sort_by,
+            "sort_dir": sort_dir.lower(),
+            "chips": chips,
+        },
+    )
+
+
+@shop_product_router.get('/admin-table/export.csv', summary="Mahsulotlar admin jadvali CSV export")
+async def products_admin_table_export(
+    _: AdminOnlyAuth,
+    sort_by: str = "created_at",
+    sort_dir: str = "desc",
+    search: Optional[str] = None,
+    category_id: Optional[int] = None,
+    collection_id: Optional[int] = None,
+    is_active: Optional[bool] = None,
+    min_price: Optional[int] = None,
+    max_price: Optional[int] = None,
+    clothing_type: Optional[str] = None,
+):
+    sort_col = PRODUCT_SORT_FIELDS.get(sort_by, Product.created_at)
+    sort_expr = desc(sort_col) if str(sort_dir).lower() == "desc" else asc(sort_col)
+
+    criteria = []
+    if search:
+        s = f"%{search}%"
+        criteria.append((Product.name_uz.ilike(s)) | (Product.name_ru.ilike(s)) | (Product.name_eng.ilike(s)))
+    if category_id is not None:
+        criteria.append(Product.category_id == category_id)
+    if collection_id is not None:
+        criteria.append(Product.collection_id == collection_id)
+    if is_active is not None:
+        criteria.append(Product.is_active == is_active)
+    if min_price is not None:
+        criteria.append(Product.price >= min_price)
+    if max_price is not None:
+        criteria.append(Product.price <= max_price)
+    if clothing_type is not None:
+        criteria.append(Product.clothing_type == clothing_type)
+
+    query = select(Product).order_by(sort_expr).limit(10000)
+    if criteria:
+        query = query.where(and_(*criteria))
+    rows = (await db.execute(query)).scalars().all()
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        ["id", "created_at", "name_uz", "category_id", "collection_id", "price", "clothing_type", "is_active"]
+    )
+    for p in rows:
+        writer.writerow(
+            [
+                p.id,
+                getattr(p, "created_at", None),
+                getattr(p, "name_uz", ""),
+                getattr(p, "category_id", ""),
+                getattr(p, "collection_id", ""),
+                getattr(p, "price", 0),
+                getattr(p, "clothing_type", ""),
+                getattr(p, "is_active", False),
+            ]
+        )
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="products_export.csv"'},
+    )
 
 
 @shop_product_router.post('', name='Create product', summary="Mahsulot yaratish (admin)")

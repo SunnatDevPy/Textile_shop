@@ -155,6 +155,54 @@ body {
   color: #edf3ff;
 }
 
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  font-size: 12px;
+  border: 1px solid #37537f;
+  background: #0a152a;
+  color: #b8cff7;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+.table-wrap {
+  overflow: auto;
+  border: 1px solid #32476d;
+  border-radius: 12px;
+  background: #060d1d;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th,
+.data-table td {
+  border-bottom: 1px solid #1d2a44;
+  padding: 9px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table th {
+  position: sticky;
+  top: 0;
+  background: #0d1830;
+  color: #cfe2ff;
+}
+
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
 h2 {
   margin: 0 0 8px;
   color: #f4f8ff;

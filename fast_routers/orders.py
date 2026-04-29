@@ -1,11 +1,13 @@
 """Заказы: позиции с product_id + product_item_id + count; после оплаты — статус и списание остатков."""
 
+import csv
+import io
 from datetime import datetime
 from typing import Annotated, Optional, Union
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import and_, desc, select, update
+from sqlalchemy import and_, desc, func, select, update
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
@@ -46,6 +48,14 @@ ALLOWED_STATUS_TRANSITIONS = {
     },
     Order.StatusOrder.DELIVERED.value: set(),
     Order.StatusOrder.CANCELLED.value: set(),
+}
+
+ORDER_SORT_FIELDS = {
+    "id": Order.id,
+    "created_at": Order.created_at,
+    "status": Order.status,
+    "payment": Order.payment,
+    "first_name": Order.first_name,
 }
 
 
@@ -173,6 +183,147 @@ async def get_order(order_id: int, _: StaffAuth):
     if order is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Buyurtma topilmadi')
     return ok_response(order)
+
+
+def _build_order_filters(
+    order_id: Optional[int] = None,
+    status_q: Optional[str] = None,
+    payment: Optional[str] = None,
+    contact: Optional[str] = None,
+    first_name: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+):
+    criteria = []
+    if order_id is not None:
+        criteria.append(Order.id == order_id)
+    if status_q:
+        criteria.append(Order.status == status_q)
+    if payment:
+        criteria.append(Order.payment == payment)
+    if contact:
+        criteria.append(Order.contact.ilike(f"%{contact}%"))
+    if first_name:
+        criteria.append(Order.first_name.ilike(f"%{first_name}%"))
+    if date_from:
+        try:
+            from_dt = datetime.fromisoformat(date_from)
+            criteria.append(Order.created_at >= from_dt)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="date_from ISO formatda bo'lishi kerak")
+    if date_to:
+        try:
+            to_dt = datetime.fromisoformat(date_to)
+            if "T" not in date_to:
+                to_dt = to_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+            criteria.append(Order.created_at <= to_dt)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="date_to ISO formatda bo'lishi kerak")
+    return criteria
+
+
+@order_router.get('/admin-table', summary="Admin jadval: pagination + sort + filter (operator/admin)")
+async def admin_table_orders(
+    _: StaffAuth,
+    page: int = 1,
+    page_size: int = 20,
+    sort_by: str = "created_at",
+    sort_dir: str = "desc",
+    order_id: Optional[int] = None,
+    status_q: Optional[str] = None,
+    payment: Optional[str] = None,
+    contact: Optional[str] = None,
+    first_name: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+):
+    page = max(1, int(page))
+    page_size = max(1, min(int(page_size), 200))
+    sort_col = ORDER_SORT_FIELDS.get(sort_by, Order.created_at)
+    sort_expr = sort_col.desc() if str(sort_dir).lower() == "desc" else sort_col.asc()
+
+    criteria = _build_order_filters(order_id, status_q, payment, contact, first_name, date_from, date_to)
+    where_clause = and_(*criteria) if criteria else None
+
+    count_q = select(func.count(Order.id))
+    data_q = select(Order).order_by(sort_expr).offset((page - 1) * page_size).limit(page_size)
+    if where_clause is not None:
+        count_q = count_q.where(where_clause)
+        data_q = data_q.where(where_clause)
+
+    total = int((await db.execute(count_q)).scalar() or 0)
+    rows = (await db.execute(data_q)).scalars().all()
+    total_pages = (total + page_size - 1) // page_size if total else 0
+
+    chips = []
+    for key, value in {
+        "order_id": order_id,
+        "status_q": status_q,
+        "payment": payment,
+        "contact": contact,
+        "first_name": first_name,
+        "date_from": date_from,
+        "date_to": date_to,
+    }.items():
+        if value not in (None, ""):
+            chips.append({"key": key, "value": str(value)})
+
+    return ok_response(
+        rows,
+        meta={
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": total_pages,
+            "sort_by": sort_by,
+            "sort_dir": sort_dir.lower(),
+            "chips": chips,
+        },
+    )
+
+
+@order_router.get('/admin-table/export.csv', summary="Admin jadval natijasini CSV export (operator/admin)")
+async def export_orders_csv(
+    _: StaffAuth,
+    sort_by: str = "created_at",
+    sort_dir: str = "desc",
+    order_id: Optional[int] = None,
+    status_q: Optional[str] = None,
+    payment: Optional[str] = None,
+    contact: Optional[str] = None,
+    first_name: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+):
+    sort_col = ORDER_SORT_FIELDS.get(sort_by, Order.created_at)
+    sort_expr = sort_col.desc() if str(sort_dir).lower() == "desc" else sort_col.asc()
+    criteria = _build_order_filters(order_id, status_q, payment, contact, first_name, date_from, date_to)
+
+    query = select(Order).order_by(sort_expr).limit(10000)
+    if criteria:
+        query = query.where(and_(*criteria))
+    rows = (await db.execute(query)).scalars().all()
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["id", "created_at", "first_name", "last_name", "contact", "payment", "status", "address"])
+    for o in rows:
+        writer.writerow([
+            o.id,
+            getattr(o, "created_at", None),
+            getattr(o, "first_name", ""),
+            getattr(o, "last_name", ""),
+            getattr(o, "contact", ""),
+            _status_value(getattr(o, "payment", "")),
+            _status_value(getattr(o, "status", "")),
+            getattr(o, "address", ""),
+        ])
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="orders_export.csv"'},
+    )
 
 
 @order_router.post('', name='Create order', summary="Yangi buyurtma yaratish")

@@ -2,6 +2,20 @@ const state = {
   baseUrl: localStorage.getItem("admin_base_url") || window.location.origin,
   username: localStorage.getItem("admin_username") || "",
   password: localStorage.getItem("admin_password") || "",
+  ordersTable: {
+    page: 1,
+    pageSize: 20,
+    sortBy: "created_at",
+    sortDir: "desc",
+    filters: {},
+  },
+  productsTable: {
+    page: 1,
+    pageSize: 20,
+    sortBy: "created_at",
+    sortDir: "desc",
+    filters: {},
+  },
 };
 
 const statusLine = document.getElementById("statusLine");
@@ -83,6 +97,18 @@ function toFormData(form) {
 
 function parseBool(v) {
   return String(v).toLowerCase() === "true";
+}
+
+function esc(v) {
+  return String(v ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function nextSortDir(current, field, activeField) {
+  if (activeField !== field) return "desc";
+  return current === "desc" ? "asc" : "desc";
 }
 
 function bindGlobalActions() {
@@ -199,6 +225,142 @@ function bindOrders() {
       setStatus(e.message, true);
     }
   });
+
+  async function loadOrdersTable() {
+    const params = new URLSearchParams({
+      page: String(state.ordersTable.page),
+      page_size: String(state.ordersTable.pageSize),
+      sort_by: state.ordersTable.sortBy,
+      sort_dir: state.ordersTable.sortDir,
+    });
+    Object.entries(state.ordersTable.filters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && String(v).trim() !== "") params.set(k, String(v).trim());
+    });
+
+    const data = await api(`/order/admin-table?${params.toString()}`);
+    const rows = Array.isArray(data?.data) ? data.data : [];
+    const meta = data?.meta || {};
+
+    const chips = (meta.chips || []).map((c) => `<span class="chip">${esc(c.key)}: ${esc(c.value)}</span>`).join("");
+    document.getElementById("ordersFilterChips").innerHTML = chips;
+
+    const tableHtml = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="id">ID</th>
+            <th class="sortable" data-sort="created_at">Sana</th>
+            <th class="sortable" data-sort="first_name">Mijoz</th>
+            <th>Kontakt</th>
+            <th class="sortable" data-sort="payment">To'lov</th>
+            <th class="sortable" data-sort="status">Status</th>
+            <th>Manzil</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            rows.length
+              ? rows
+                  .map(
+                    (r) => `<tr>
+                      <td>${esc(r.id)}</td>
+                      <td>${esc(r.created_at)}</td>
+                      <td>${esc(`${r.first_name || ""} ${r.last_name || ""}`.trim())}</td>
+                      <td>${esc(r.contact)}</td>
+                      <td>${esc(r.payment)}</td>
+                      <td>${esc(r.status)}</td>
+                      <td>${esc(r.address)}</td>
+                    </tr>`
+                  )
+                  .join("")
+              : `<tr><td colspan="7">Ma'lumot topilmadi</td></tr>`
+          }
+        </tbody>
+      </table>
+    `;
+    document.getElementById("ordersTableWrap").innerHTML = tableHtml;
+    document.querySelectorAll("#ordersTableWrap th.sortable").forEach((th) => {
+      th.addEventListener("click", async () => {
+        const field = th.dataset.sort;
+        state.ordersTable.sortDir = nextSortDir(state.ordersTable.sortDir, field, state.ordersTable.sortBy);
+        state.ordersTable.sortBy = field;
+        state.ordersTable.page = 1;
+        try {
+          await loadOrdersTable();
+        } catch (e) {
+          setStatus(e.message, true);
+        }
+      });
+    });
+    document.getElementById("ordersPageInfo").textContent =
+      `Sahifa ${meta.page || state.ordersTable.page} / ${meta.total_pages || 0} | Jami: ${meta.total || 0}`;
+  }
+
+  document.getElementById("ordersTableFilterForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const fd = new FormData(ev.target);
+    state.ordersTable.page = 1;
+    state.ordersTable.pageSize = Number(fd.get("page_size") || 20);
+    state.ordersTable.sortBy = String(fd.get("sort_by") || "created_at");
+    state.ordersTable.sortDir = String(fd.get("sort_dir") || "desc");
+    state.ordersTable.filters = {
+      status_q: fd.get("status_q"),
+      payment: fd.get("payment"),
+      contact: fd.get("contact"),
+      first_name: fd.get("first_name"),
+      date_from: fd.get("date_from"),
+      date_to: fd.get("date_to"),
+    };
+    try {
+      await loadOrdersTable();
+      setStatus("Buyurtmalar jadvali yuklandi.");
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+
+  document.getElementById("ordersPrevBtn").addEventListener("click", async () => {
+    if (state.ordersTable.page <= 1) return;
+    state.ordersTable.page -= 1;
+    try {
+      await loadOrdersTable();
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+
+  document.getElementById("ordersNextBtn").addEventListener("click", async () => {
+    state.ordersTable.page += 1;
+    try {
+      await loadOrdersTable();
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+
+  document.getElementById("ordersTableExportBtn").addEventListener("click", async () => {
+    try {
+      const params = new URLSearchParams({
+        sort_by: state.ordersTable.sortBy,
+        sort_dir: state.ordersTable.sortDir,
+      });
+      Object.entries(state.ordersTable.filters).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && String(v).trim() !== "") params.set(k, String(v).trim());
+      });
+      const res = await fetch(`${state.baseUrl}/order/admin-table/export.csv?${params.toString()}`, {
+        headers: getAuthHeader(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "orders_export.csv";
+      link.click();
+      setStatus("CSV export yuklab olindi.");
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
 }
 
 function bindProducts() {
@@ -258,6 +420,142 @@ function bindProducts() {
     try {
       out("productsOut", await api("/products", { method: "POST", body: formData }));
       setStatus("Product created.");
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+
+  async function loadProductsTable() {
+    const params = new URLSearchParams({
+      page: String(state.productsTable.page),
+      page_size: String(state.productsTable.pageSize),
+      sort_by: state.productsTable.sortBy,
+      sort_dir: state.productsTable.sortDir,
+    });
+    Object.entries(state.productsTable.filters).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && String(v).trim() !== "") params.set(k, String(v).trim());
+    });
+
+    const data = await api(`/products/admin-table?${params.toString()}`);
+    const rows = Array.isArray(data?.data) ? data.data : [];
+    const meta = data?.meta || {};
+    const chips = (meta.chips || []).map((c) => `<span class="chip">${esc(c.key)}: ${esc(c.value)}</span>`).join("");
+    document.getElementById("productsFilterChips").innerHTML = chips;
+
+    const tableHtml = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="id">ID</th>
+            <th class="sortable" data-sort="name_uz">Nomi</th>
+            <th class="sortable" data-sort="price">Narx</th>
+            <th class="sortable" data-sort="is_active">Holati</th>
+            <th class="sortable" data-sort="clothing_type">Turi</th>
+            <th>Kategoriya</th>
+            <th>Kolleksiya</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            rows.length
+              ? rows
+                  .map(
+                    (r) => `<tr>
+                      <td>${esc(r.id)}</td>
+                      <td>${esc(r.name_uz)}</td>
+                      <td>${esc(r.price)}</td>
+                      <td>${esc(r.is_active)}</td>
+                      <td>${esc(r.clothing_type)}</td>
+                      <td>${esc(r.category_id)}</td>
+                      <td>${esc(r.collection_id)}</td>
+                    </tr>`
+                  )
+                  .join("")
+              : `<tr><td colspan="7">Ma'lumot topilmadi</td></tr>`
+          }
+        </tbody>
+      </table>
+    `;
+    document.getElementById("productsTableWrap").innerHTML = tableHtml;
+    document.querySelectorAll("#productsTableWrap th.sortable").forEach((th) => {
+      th.addEventListener("click", async () => {
+        const field = th.dataset.sort;
+        state.productsTable.sortDir = nextSortDir(state.productsTable.sortDir, field, state.productsTable.sortBy);
+        state.productsTable.sortBy = field;
+        state.productsTable.page = 1;
+        try {
+          await loadProductsTable();
+        } catch (e) {
+          setStatus(e.message, true);
+        }
+      });
+    });
+    document.getElementById("productsPageInfo").textContent =
+      `Sahifa ${meta.page || state.productsTable.page} / ${meta.total_pages || 0} | Jami: ${meta.total || 0}`;
+  }
+
+  document.getElementById("productsTableFilterForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const fd = new FormData(ev.target);
+    state.productsTable.page = 1;
+    state.productsTable.pageSize = Number(fd.get("page_size") || 20);
+    state.productsTable.sortBy = String(fd.get("sort_by") || "created_at");
+    state.productsTable.sortDir = String(fd.get("sort_dir") || "desc");
+    state.productsTable.filters = {
+      search: fd.get("search"),
+      category_id: fd.get("category_id"),
+      collection_id: fd.get("collection_id"),
+      is_active: fd.get("is_active"),
+      min_price: fd.get("min_price"),
+      max_price: fd.get("max_price"),
+      clothing_type: fd.get("clothing_type"),
+    };
+    try {
+      await loadProductsTable();
+      setStatus("Mahsulotlar jadvali yuklandi.");
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+
+  document.getElementById("productsPrevBtn").addEventListener("click", async () => {
+    if (state.productsTable.page <= 1) return;
+    state.productsTable.page -= 1;
+    try {
+      await loadProductsTable();
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+
+  document.getElementById("productsNextBtn").addEventListener("click", async () => {
+    state.productsTable.page += 1;
+    try {
+      await loadProductsTable();
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+
+  document.getElementById("productsTableExportBtn").addEventListener("click", async () => {
+    try {
+      const params = new URLSearchParams({
+        sort_by: state.productsTable.sortBy,
+        sort_dir: state.productsTable.sortDir,
+      });
+      Object.entries(state.productsTable.filters).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && String(v).trim() !== "") params.set(k, String(v).trim());
+      });
+      const res = await fetch(`${state.baseUrl}/products/admin-table/export.csv?${params.toString()}`, {
+        headers: getAuthHeader(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "products_export.csv";
+      link.click();
+      setStatus("Mahsulotlar CSV export yuklab olindi.");
     } catch (e) {
       setStatus(e.message, true);
     }

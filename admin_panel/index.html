@@ -56,6 +56,40 @@
       <div id="ordersTab" class="tab">
         <h2>Buyurtmalar</h2>
         <p class="help">Buyurtmalarni ko'rish, filtrlash, statusni o'zgartirish va to'lovni tasdiqlash uchun.</p>
+        <div class="card">
+          <h3>Jadval (server-side)</h3>
+          <form id="ordersTableFilterForm" class="form">
+            <input name="status_q" placeholder="status (yangi, to'landi...)" />
+            <input name="payment" placeholder="payment (click/payme/cash)" />
+            <input name="contact" placeholder="contact" />
+            <input name="first_name" placeholder="first_name" />
+            <input name="date_from" placeholder="date_from (YYYY-MM-DD)" />
+            <input name="date_to" placeholder="date_to (YYYY-MM-DD)" />
+            <select name="sort_by">
+              <option value="created_at">created_at</option>
+              <option value="id">id</option>
+              <option value="status">status</option>
+              <option value="payment">payment</option>
+              <option value="first_name">first_name</option>
+            </select>
+            <select name="sort_dir">
+              <option value="desc">desc</option>
+              <option value="asc">asc</option>
+            </select>
+            <input name="page_size" type="number" min="1" max="200" value="20" placeholder="page_size" />
+            <div class="actions">
+              <button type="submit">Jadvalni yuklash</button>
+              <button type="button" id="ordersTableExportBtn">CSV export</button>
+            </div>
+          </form>
+          <div id="ordersFilterChips" class="chips"></div>
+          <div id="ordersTableWrap" class="table-wrap"></div>
+          <div class="actions">
+            <button type="button" id="ordersPrevBtn">Oldingi</button>
+            <button type="button" id="ordersNextBtn">Keyingi</button>
+            <span id="ordersPageInfo" class="help" style="margin:0"></span>
+          </div>
+        </div>
         <div class="grid2">
           <div class="card">
             <h3>Ro'yxat va qidiruv</h3>
@@ -90,6 +124,50 @@
       <div id="productsTab" class="tab">
         <h2>Mahsulotlar</h2>
         <p class="help">Mahsulotlar va subresurslar (item/detail/photo) bilan ishlash, yangi mahsulot yaratish.</p>
+        <div class="card">
+          <h3>Mahsulotlar jadvali (server-side)</h3>
+          <form id="productsTableFilterForm" class="form">
+            <input name="search" placeholder="search (nom bo'yicha)" />
+            <input name="category_id" type="number" placeholder="category_id" />
+            <input name="collection_id" type="number" placeholder="collection_id" />
+            <select name="is_active">
+              <option value="">is_active (barchasi)</option>
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+            <input name="min_price" type="number" placeholder="min_price" />
+            <input name="max_price" type="number" placeholder="max_price" />
+            <select name="clothing_type">
+              <option value="">clothing_type (barchasi)</option>
+              <option value="erkak">erkak</option>
+              <option value="ayol">ayol</option>
+            </select>
+            <select name="sort_by">
+              <option value="created_at">created_at</option>
+              <option value="id">id</option>
+              <option value="name_uz">name_uz</option>
+              <option value="price">price</option>
+              <option value="is_active">is_active</option>
+              <option value="clothing_type">clothing_type</option>
+            </select>
+            <select name="sort_dir">
+              <option value="desc">desc</option>
+              <option value="asc">asc</option>
+            </select>
+            <input name="page_size" type="number" min="1" max="200" value="20" placeholder="page_size" />
+            <div class="actions">
+              <button type="submit">Jadvalni yuklash</button>
+              <button type="button" id="productsTableExportBtn">CSV export</button>
+            </div>
+          </form>
+          <div id="productsFilterChips" class="chips"></div>
+          <div id="productsTableWrap" class="table-wrap"></div>
+          <div class="actions">
+            <button type="button" id="productsPrevBtn">Oldingi</button>
+            <button type="button" id="productsNextBtn">Keyingi</button>
+            <span id="productsPageInfo" class="help" style="margin:0"></span>
+          </div>
+        </div>
         <div class="grid2">
           <div class="card">
             <h3>Ko'rish endpointlari</h3>
