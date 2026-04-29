@@ -6,13 +6,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import and_, desc, func, select
 
 from fast_routers.admin_auth import verify_admin_credentials
-from models import AdminUser, AuditLog, Order, OrderItem, Product, ProductItems
+from models import AdminUser, AuditLog, Category, Order, OrderItem, Product, ProductItems
 from models.database import db
 from utils.response import ok_response
 from utils.security import enforce_rate_limit
 
 history_router = APIRouter(prefix="/history", tags=["History"])
 logger = logging.getLogger(__name__)
+
+
+def _safe_rate(part: int, total: int) -> float:
+    if total <= 0:
+        return 0.0
+    return float(part) / float(total)
 
 
 def _parse_date_range(
@@ -242,6 +248,10 @@ async def sales_stats(
                 "paid_orders": int(sales_row.paid_orders or 0),
                 "sold_items_count": int(sales_row.sold_items_count or 0),
                 "sales_amount": int(sales_row.sales_amount or 0),
+                "avg_order_value": int((int(sales_row.sales_amount or 0) / int(sales_row.paid_orders or 1)))
+                if int(sales_row.paid_orders or 0) > 0
+                else 0,
+                "sales_conversion": _safe_rate(int(sales_row.paid_orders or 0), int(total_orders)),
                 "payment_breakdown": payment_breakdown,
                 "sales_by_clothing_type": sales_by_clothing_type,
                 "currency": "UZS",
@@ -317,6 +327,12 @@ async def analytics_v2(
                 "rate": (count_val / total_orders) if total_orders else 0.0,
             }
 
+        sold_orders_count = sum(
+            int(v.get("orders_count", 0))
+            for k, v in conversion_by_status.items()
+            if k in sold_statuses
+        )
+
         # 2) Top products (by quantity + revenue)
         top_products_q = (
             select(
@@ -364,6 +380,36 @@ async def analytics_v2(
         sold_orders_revenue = sum(int(r.order_total or 0) for r in sold_order_totals_rows)
         avg_check = int(sold_orders_revenue / sold_orders_count) if sold_orders_count else 0
 
+        # 3.1) Top categories by revenue
+        top_categories_q = (
+            select(
+                Category.id.label("category_id"),
+                Category.name_uz.label("name_uz"),
+                func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
+                func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
+            )
+            .select_from(OrderItem)
+            .join(Order, Order.id == OrderItem.order_id)
+            .join(Product, Product.id == OrderItem.product_id)
+            .join(Category, Category.id == Product.category_id)
+            .where(Order.status.in_(sold_statuses))
+            .group_by(Category.id, Category.name_uz)
+            .order_by(desc(func.sum(OrderItem.total)))
+            .limit(top_limit)
+        )
+        if base_criteria:
+            top_categories_q = top_categories_q.where(and_(*base_criteria))
+        top_categories_rows = (await db.execute(top_categories_q)).all()
+        top_categories = [
+            {
+                "category_id": int(r.category_id),
+                "name_uz": r.name_uz,
+                "revenue": int(r.revenue or 0),
+                "sold_items": int(r.sold_items or 0),
+            }
+            for r in top_categories_rows
+        ]
+
         # 4) LTV (by customer contact)
         ltv_q = (
             select(
@@ -398,6 +444,33 @@ async def analytics_v2(
             "repeat_customers_count": int(repeat_customers),
             "repeat_customer_rate": (repeat_customers / customers_count) if customers_count else 0.0,
         }
+
+        # 5.1) Payment mix (sold statuses only)
+        payment_mix_q = (
+            select(
+                Order.payment.label("payment"),
+                func.count(func.distinct(Order.id)).label("orders_count"),
+                func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
+            )
+            .select_from(Order)
+            .join(OrderItem, OrderItem.order_id == Order.id)
+            .where(Order.status.in_(sold_statuses))
+            .group_by(Order.payment)
+        )
+        if base_criteria:
+            payment_mix_q = payment_mix_q.where(and_(*base_criteria))
+        payment_mix_rows = (await db.execute(payment_mix_q)).all()
+        payment_mix = []
+        for r in payment_mix_rows:
+            orders_count = int(r.orders_count or 0)
+            payment_mix.append(
+                {
+                    "payment": getattr(r.payment, "value", str(r.payment)),
+                    "orders_count": orders_count,
+                    "orders_rate": _safe_rate(orders_count, sold_orders_count),
+                    "revenue": int(r.revenue or 0),
+                }
+            )
 
         # 6) Sales by day
         sales_by_day_q = (
@@ -465,11 +538,17 @@ async def analytics_v2(
                 "to": date_to,
                 "currency": "UZS",
                 "top_products": top_products,
+                "top_categories": top_categories,
                 "conversion_by_status": conversion_by_status,
                 "average_check": {
                     "sold_orders_count": sold_orders_count,
                     "sold_orders_revenue": sold_orders_revenue,
                     "avg_check": avg_check,
+                },
+                "funnel": {
+                    "total_orders": total_orders,
+                    "sold_orders_count": sold_orders_count,
+                    "sold_rate": _safe_rate(sold_orders_count, total_orders),
                 },
                 "ltv": {
                     "customers_count": customers_count,
@@ -477,6 +556,7 @@ async def analytics_v2(
                     "top_customers": top_customers_by_ltv,
                 },
                 "repeat_sales": repeat_sales,
+                "payment_mix": payment_mix,
                 "sales_by_day": sales_by_day,
                 "sales_by_week": sales_by_week,
             }
@@ -631,6 +711,34 @@ async def dashboard_stats(
         for r in top_products_rows
     ]
 
+    top_categories_rows = (
+        await db.execute(
+            select(
+                Category.id.label("category_id"),
+                Category.name_uz.label("name_uz"),
+                func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
+                func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
+            )
+            .select_from(OrderItem)
+            .join(Order, Order.id == OrderItem.order_id)
+            .join(Product, Product.id == OrderItem.product_id)
+            .join(Category, Category.id == Product.category_id)
+            .where(Order.status.in_(sold_statuses))
+            .group_by(Category.id, Category.name_uz)
+            .order_by(desc(func.sum(OrderItem.total)))
+            .limit(top_limit)
+        )
+    ).all()
+    top_categories = [
+        {
+            "category_id": int(r.category_id),
+            "name_uz": r.name_uz,
+            "sold_items": int(r.sold_items or 0),
+            "revenue": int(r.revenue or 0),
+        }
+        for r in top_categories_rows
+    ]
+
     inventory_row = (
         await db.execute(
             select(
@@ -679,9 +787,11 @@ async def dashboard_stats(
             "generated_at": now.isoformat(),
             "today_sales": today_sales,
             "week_sales": week_sales,
+            "today_vs_week_revenue_rate": _safe_rate(today_sales["revenue"], week_sales["revenue"]),
             "new_orders": new_orders,
             "low_stock": low_stock,
             "top_products": top_products,
+            "top_categories": top_categories,
             "inventory_summary": inventory_summary,
             "inventory_by_clothing_type": inventory_by_clothing_type,
             "currency": "UZS",

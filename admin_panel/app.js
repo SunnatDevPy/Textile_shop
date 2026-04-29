@@ -111,6 +111,31 @@ function nextSortDir(current, field, activeField) {
   return current === "desc" ? "asc" : "desc";
 }
 
+function renderMetricCards(containerId, items) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = (items || [])
+    .map(
+      (i) => `<div style="min-width:180px;padding:10px;border:1px solid #32476d;border-radius:10px;background:#0b1324">
+      <div style="font-size:12px;color:#8fa8d8">${esc(i.label)}</div>
+      <div style="font-size:20px;font-weight:700">${esc(i.value)}</div>
+    </div>`
+    )
+    .join("");
+}
+
+function renderRowsTable(containerId, headers, rows) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const head = headers.map((h) => `<th>${esc(h)}</th>`).join("");
+  const body = (rows || []).length
+    ? rows
+        .map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`)
+        .join("")
+    : `<tr><td colspan="${headers.length}">Ma'lumot yo'q</td></tr>`;
+  el.innerHTML = `<table class="data-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
 function bindGlobalActions() {
   document.getElementById("saveAuthBtn").addEventListener("click", saveAuth);
   document.getElementById("checkMeBtn").addEventListener("click", async () => {
@@ -137,8 +162,47 @@ function bindDashboard() {
 
   document.getElementById("loadDashBtn").addEventListener("click", async () => {
     try {
-      const data = await api("/history/stats/dashboard");
-      out("dashboardOut", data);
+      const [dashboard, sales, analytics] = await Promise.all([
+        api("/history/stats/dashboard"),
+        api("/history/stats/sales"),
+        api("/history/stats/analytics-v2"),
+      ]);
+
+      const d = dashboard?.data || {};
+      const s = sales?.data || {};
+      const a = analytics?.data || {};
+
+      renderMetricCards("dashKpiCards", [
+        { label: "Bugungi tushum", value: d.today_sales?.revenue ?? 0 },
+        { label: "Haftalik tushum", value: d.week_sales?.revenue ?? 0 },
+        { label: "Yangi buyurtmalar", value: d.new_orders ?? 0 },
+        { label: "AOV", value: s.avg_order_value ?? 0 },
+        { label: "Sold rate", value: `${((a.funnel?.sold_rate ?? 0) * 100).toFixed(1)}%` },
+        { label: "Today/Week nisbati", value: `${((d.today_vs_week_revenue_rate ?? 0) * 100).toFixed(1)}%` },
+      ]);
+
+      renderRowsTable(
+        "dashPaymentMixTable",
+        ["To'lov", "Buyurtma", "Ulush", "Tushum"],
+        (a.payment_mix || []).map((x) => [
+          x.payment,
+          x.orders_count ?? 0,
+          `${(((x.orders_rate ?? 0) * 100).toFixed(1))}%`,
+          x.revenue ?? 0,
+        ])
+      );
+
+      renderRowsTable(
+        "dashTopCategoriesTable",
+        ["Kategoriya", "Soni", "Tushum"],
+        (a.top_categories || d.top_categories || []).map((x) => [
+          x.name_uz ?? "-",
+          x.sold_items ?? 0,
+          x.revenue ?? 0,
+        ])
+      );
+
+      out("dashboardOut", { dashboard, sales, analytics });
       setStatus("Dashboard stats loaded.");
     } catch (e) {
       setStatus(e.message, true);
