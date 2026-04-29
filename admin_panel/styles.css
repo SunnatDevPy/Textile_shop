@@ -98,10 +98,20 @@ body {
 
 .tab {
   display: none;
+  opacity: 0;
+  transform: translateY(6px);
 }
 
 .tab.active {
   display: block;
+  animation: tabFadeIn 0.22s ease forwards;
+}
+
+@keyframes tabFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .actions {
@@ -194,6 +204,10 @@ button:hover {
   background: #253554;
 }
 
+button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
 .output {
   background: #060d1d;
   border: 1px solid #32476d;
@@ -204,6 +218,33 @@ button:hover {
   overflow: auto;
   color: #cde2ff;
   line-height: 1.45;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.output:hover {
+  border-color: #4a6999;
+}
+
+.output-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: -4px 0 8px;
+}
+
+.expand-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 7px;
+}
+
+.output.expanded {
+  position: fixed;
+  inset: 24px;
+  z-index: 9999;
+  margin: 0;
+  min-height: auto;
+  background: #030813;
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.65);
 }
 
 .output::-webkit-scrollbar {

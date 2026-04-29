@@ -18,6 +18,23 @@ function out(id, data) {
   document.getElementById(id).textContent = typeof data === "string" ? data : pretty(data);
 }
 
+function bindExpandButtons() {
+  document.querySelectorAll(".output").forEach((output) => {
+    const toolbar = document.createElement("div");
+    toolbar.className = "output-toolbar";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "expand-btn";
+    btn.textContent = "Razvernut";
+    btn.addEventListener("click", () => {
+      const isExpanded = output.classList.toggle("expanded");
+      btn.textContent = isExpanded ? "Svernut" : "Razvernut";
+    });
+    toolbar.appendChild(btn);
+    output.parentNode.insertBefore(toolbar, output);
+  });
+}
+
 function auth() {
   if (!state.username || !state.password) return {};
   return { Authorization: "Basic " + btoa(`${state.username}:${state.password}`) };
@@ -44,6 +61,7 @@ function saveAuth() {
 }
 
 function init() {
+  bindExpandButtons();
   document.getElementById("baseUrl").value = state.baseUrl;
   document.getElementById("username").value = state.username;
   document.getElementById("password").value = state.password;

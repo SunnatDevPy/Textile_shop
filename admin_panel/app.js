@@ -85,6 +85,23 @@ function parseBool(v) {
   return String(v).toLowerCase() === "true";
 }
 
+function bindExpandButtons() {
+  document.querySelectorAll(".output").forEach((output) => {
+    const toolbar = document.createElement("div");
+    toolbar.className = "output-toolbar";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "expand-btn";
+    btn.textContent = "Razvernut";
+    btn.addEventListener("click", () => {
+      const isExpanded = output.classList.toggle("expanded");
+      btn.textContent = isExpanded ? "Svernut" : "Razvernut";
+    });
+    toolbar.appendChild(btn);
+    output.parentNode.insertBefore(toolbar, output);
+  });
+}
+
 function bindGlobalActions() {
   document.getElementById("saveAuthBtn").addEventListener("click", saveAuth);
   document.getElementById("checkMeBtn").addEventListener("click", async () => {
@@ -354,6 +371,34 @@ function bindHistory() {
   });
 }
 
+function bindDevTools() {
+  document.getElementById("seedFakeForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const fd = new FormData(ev.target);
+    const n = Number(fd.get("n") || 3);
+    const clearBefore = String(fd.get("clear_before")) === "true";
+    const qs = new URLSearchParams({
+      n: String(Math.max(1, Math.min(20, n))),
+      clear_before: String(clearBefore),
+    });
+    try {
+      out("devOut", await api(`/system/dev/seed-fake?${qs.toString()}`, { method: "POST" }));
+      setStatus("Fake data yaratildi.");
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+
+  document.getElementById("clearFakeBtn").addEventListener("click", async () => {
+    try {
+      out("devOut", await api("/system/dev/clear-fake", { method: "DELETE" }));
+      setStatus("Fake data tozalandi.");
+    } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+}
+
 function bindPayments() {
   document.getElementById("clickPrepareForm").addEventListener("submit", async (ev) => {
     ev.preventDefault();
@@ -470,6 +515,7 @@ function bindExcel() {
 
 function init() {
   fillAuthInputs();
+  bindExpandButtons();
   bindTabs();
   bindGlobalActions();
   bindDashboard();
@@ -478,6 +524,7 @@ function init() {
   bindLookups();
   bindPanelUsers();
   bindHistory();
+  bindDevTools();
   bindPayments();
   bindExcel();
 }
