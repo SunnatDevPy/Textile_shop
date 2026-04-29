@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -11,6 +12,7 @@ from utils.response import ok_response
 from utils.security import enforce_rate_limit
 
 history_router = APIRouter(prefix="/history", tags=["History"])
+logger = logging.getLogger(__name__)
 
 
 def _parse_date_range(
@@ -482,11 +484,38 @@ async def analytics_v2(
     except HTTPException:
         await db.rollback()
         raise
-    except Exception:
+    except Exception as exc:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Analytics statistikani olishda xatolik",
+        logger.exception("analytics_v2 failed: %s", exc)
+        # Bu endpoint demo/panel uchun tez-tez ishlatiladi.
+        # Xatolik bo'lsa ham 500 bermay, bo'sh fallback qaytaramiz.
+        return ok_response(
+            {
+                "from": date_from,
+                "to": date_to,
+                "currency": "UZS",
+                "top_products": [],
+                "conversion_by_status": {},
+                "average_check": {
+                    "sold_orders_count": 0,
+                    "sold_orders_revenue": 0,
+                    "avg_check": 0,
+                },
+                "ltv": {
+                    "customers_count": 0,
+                    "avg_ltv": 0,
+                    "top_customers": [],
+                },
+                "repeat_sales": {
+                    "customers_count": 0,
+                    "repeat_customers_count": 0,
+                    "repeat_customer_rate": 0.0,
+                },
+                "sales_by_day": [],
+                "sales_by_week": [],
+                "warning": f"analytics_v2 fallback: {exc.__class__.__name__}",
+            },
+            meta={"partial": True},
         )
 
 
