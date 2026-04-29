@@ -19,6 +19,11 @@ def _parse_date_range(
 ) -> tuple[Optional[datetime], Optional[datetime]]:
     dt_from = datetime.fromisoformat(date_from) if date_from else None
     dt_to = datetime.fromisoformat(date_to) if date_to else None
+
+    # Agar query faqat sana ko'rinishida bo'lsa (YYYY-MM-DD),
+    # date_to ni shu kunning oxirigacha kengaytiramiz (23:59:59.999999).
+    if date_to and "T" not in date_to and dt_to:
+        dt_to = (dt_to + timedelta(days=1)) - timedelta(microseconds=1)
     return dt_from, dt_to
 
 
@@ -409,15 +414,18 @@ async def analytics_v2(
         if base_criteria:
             sales_by_day_q = sales_by_day_q.where(and_(*base_criteria))
         sales_by_day_rows = (await db.execute(sales_by_day_q)).all()
-        sales_by_day = [
-            {
-                "date": row.bucket.date().isoformat(),
-                "orders_count": int(row.orders_count or 0),
-                "sold_items": int(row.sold_items or 0),
-                "revenue": int(row.revenue or 0),
-            }
-            for row in sales_by_day_rows
-        ]
+        sales_by_day = []
+        for row in sales_by_day_rows:
+            if not row.bucket:
+                continue
+            sales_by_day.append(
+                {
+                    "date": row.bucket.date().isoformat(),
+                    "orders_count": int(row.orders_count or 0),
+                    "sold_items": int(row.sold_items or 0),
+                    "revenue": int(row.revenue or 0),
+                }
+            )
 
         # 7) Sales by week
         sales_by_week_q = (
@@ -436,15 +444,18 @@ async def analytics_v2(
         if base_criteria:
             sales_by_week_q = sales_by_week_q.where(and_(*base_criteria))
         sales_by_week_rows = (await db.execute(sales_by_week_q)).all()
-        sales_by_week = [
-            {
-                "week_start": row.bucket.date().isoformat(),
-                "orders_count": int(row.orders_count or 0),
-                "sold_items": int(row.sold_items or 0),
-                "revenue": int(row.revenue or 0),
-            }
-            for row in sales_by_week_rows
-        ]
+        sales_by_week = []
+        for row in sales_by_week_rows:
+            if not row.bucket:
+                continue
+            sales_by_week.append(
+                {
+                    "week_start": row.bucket.date().isoformat(),
+                    "orders_count": int(row.orders_count or 0),
+                    "sold_items": int(row.sold_items or 0),
+                    "revenue": int(row.revenue or 0),
+                }
+            )
 
         return ok_response(
             {
