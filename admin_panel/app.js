@@ -12,7 +12,7 @@ const state = {
   productsTable: {
     page: 1,
     pageSize: 20,
-    sortBy: "created_at",
+    sortBy: "id",
     sortDir: "desc",
     filters: {},
   },
@@ -499,7 +499,7 @@ function bindProducts() {
     const fd = new FormData(ev.target);
     state.productsTable.page = 1;
     state.productsTable.pageSize = Number(fd.get("page_size") || 20);
-    state.productsTable.sortBy = String(fd.get("sort_by") || "created_at");
+    state.productsTable.sortBy = String(fd.get("sort_by") || "id");
     state.productsTable.sortDir = String(fd.get("sort_dir") || "desc");
     state.productsTable.filters = {
       search: fd.get("search"),

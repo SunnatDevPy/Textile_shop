@@ -18,7 +18,6 @@ AdminOnlyAuth = Annotated[AdminUser, Depends(require_admin)]
 
 PRODUCT_SORT_FIELDS = {
     "id": Product.id,
-    "created_at": Product.created_at,
     "name_uz": Product.name_uz,
     "price": Product.price,
     "is_active": Product.is_active,
@@ -123,7 +122,7 @@ async def products_admin_table(
     _: AdminOnlyAuth,
     page: int = 1,
     page_size: int = 20,
-    sort_by: str = "created_at",
+    sort_by: str = "id",
     sort_dir: str = "desc",
     search: Optional[str] = None,
     category_id: Optional[int] = None,
@@ -135,7 +134,7 @@ async def products_admin_table(
 ):
     page = max(1, int(page))
     page_size = max(1, min(int(page_size), 200))
-    sort_col = PRODUCT_SORT_FIELDS.get(sort_by, Product.created_at)
+    sort_col = PRODUCT_SORT_FIELDS.get(sort_by, Product.id)
     sort_expr = desc(sort_col) if str(sort_dir).lower() == "desc" else asc(sort_col)
 
     criteria = []
@@ -196,7 +195,7 @@ async def products_admin_table(
 @shop_product_router.get('/admin-table/export.csv', summary="Mahsulotlar admin jadvali CSV export")
 async def products_admin_table_export(
     _: AdminOnlyAuth,
-    sort_by: str = "created_at",
+    sort_by: str = "id",
     sort_dir: str = "desc",
     search: Optional[str] = None,
     category_id: Optional[int] = None,
@@ -206,7 +205,7 @@ async def products_admin_table_export(
     max_price: Optional[int] = None,
     clothing_type: Optional[str] = None,
 ):
-    sort_col = PRODUCT_SORT_FIELDS.get(sort_by, Product.created_at)
+    sort_col = PRODUCT_SORT_FIELDS.get(sort_by, Product.id)
     sort_expr = desc(sort_col) if str(sort_dir).lower() == "desc" else asc(sort_col)
 
     criteria = []
