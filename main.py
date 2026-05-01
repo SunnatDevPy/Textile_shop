@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Response, Request
 from fastapi.staticfiles import StaticFiles
@@ -76,12 +77,15 @@ app = FastAPI(
     docs_url="/docs",
     lifespan=lifespan,
 )
-app.mount("/admin", StaticFiles(directory="admin_panel", html=True), name="admin_panel")
+admin_static_dir = Path("frontend-react/dist")
+if not admin_static_dir.exists():
+    admin_static_dir = Path("admin_panel")
+app.mount("/admin", StaticFiles(directory=str(admin_static_dir), html=True), name="admin_panel")
 
 
 @app.get("/admin", include_in_schema=False)
 async def admin_root_redirect():
-    return RedirectResponse(url="/admin/home.html")
+    return RedirectResponse(url="/admin/")
 # app.add_middleware(
 #     # CORSMiddleware,
 #     # # allow_origins=["https://web.telegram.org", "https://your-client.com"],
@@ -114,10 +118,12 @@ app.add_middleware(
 
 @app.middleware("http")
 async def db_session_middleware(request: Request, call_next):
+    scope_token = db.set_scope(f"req-{id(request)}")
     try:
         return await call_next(request)
     finally:
         await db.remove()
+        db.reset_scope(scope_token)
 
 
 @app.options("/{full_path:path}")

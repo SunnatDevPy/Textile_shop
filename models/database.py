@@ -1,4 +1,4 @@
-import asyncio
+from contextvars import ContextVar
 from datetime import datetime
 
 from sqlalchemy import BigInteger, delete as sqlalchemy_delete, DateTime, update as sqlalchemy_update, func
@@ -31,6 +31,7 @@ class AsyncDatabaseSession:
         self._session = None
         self._session_factory = None
         self._engine = None
+        self._scope_id: ContextVar[str] = ContextVar("db_scope_id", default="global")
 
     def __getattr__(self, name):
         return getattr(self._session, name)
@@ -56,7 +57,13 @@ class AsyncDatabaseSession:
             pool_recycle=conf.db.POOL_RECYCLE,
         )
         self._session_factory = sessionmaker(self._engine, expire_on_commit=False, class_=AsyncSession)
-        self._session = async_scoped_session(self._session_factory, scopefunc=asyncio.current_task)
+        self._session = async_scoped_session(self._session_factory, scopefunc=lambda: self._scope_id.get())
+
+    def set_scope(self, scope: str):
+        return self._scope_id.set(scope)
+
+    def reset_scope(self, token):
+        self._scope_id.reset(token)
 
     async def remove(self):
         # Close current task-bound session and remove it from scope registry.
