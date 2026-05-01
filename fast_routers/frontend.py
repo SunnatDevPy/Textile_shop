@@ -1,4 +1,9 @@
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+
+from fast_routers.admin_auth import verify_admin_credentials
+from models.users import AdminUser
 
 from models import (
     Category,
@@ -12,14 +17,17 @@ from models import (
     Size,
 )
 
-frontend_router = APIRouter(prefix="/frontend", tags=["Frontend"])
+frontend_router = APIRouter(prefix="/panel", tags=["Admin Frontend"])
 
 
 @frontend_router.get(
     "/bootstrap",
     summary="Frontend uchun barcha asosiy ma'lumotlar",
 )
-async def frontend_bootstrap(include_inactive: bool = False):
+async def frontend_bootstrap(
+    _: Annotated[AdminUser, Depends(verify_admin_credentials)],
+    include_inactive: bool = False,
+):
     products_all = await Product.all()
     products = products_all if include_inactive else [p for p in products_all if bool(getattr(p, "is_active", False))]
     product_ids_set = {int(p.id) for p in products}
@@ -114,7 +122,10 @@ async def frontend_bootstrap(include_inactive: bool = False):
     "/bootstrap/normalized",
     summary="Frontend uchun ma'lumotlar (normalized, duplicate kamroq)",
 )
-async def frontend_bootstrap_normalized(include_inactive: bool = False):
+async def frontend_bootstrap_normalized(
+    _: Annotated[AdminUser, Depends(verify_admin_credentials)],
+    include_inactive: bool = False,
+):
     products_all = await Product.all()
     products = products_all if include_inactive else [p for p in products_all if bool(getattr(p, "is_active", False))]
 

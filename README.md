@@ -23,7 +23,7 @@ Backend quyidagilarni boshqaradi:
 - Excel import (`/excel/*`)
 - Tarix (`/history/*`)
 - Tizim endpointlari (`/system/*`)
-- Frontend bootstrap (`/frontend/bootstrap`)
+- Admin bootstrap (`/panel/bootstrap`)
 - Telegram bot (aiogram, guruh bildirishnomalari)
 
 ---
@@ -193,9 +193,9 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 
 ---
 
-## 4.2 Frontend API (`/frontend`) - Public
+## 4.2 Admin Bootstrap API (`/panel`) - Staff (Basic Auth)
 
-### `GET /frontend/bootstrap`
+### `GET /panel/bootstrap`
 - Vazifa: frontend uchun boshlang'ich ma'lumotlarni bitta so'rovda beradi.
 - Query:
   - `include_inactive` (bool, default: `false`)
@@ -215,7 +215,7 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
 }
 ```
 
-### `GET /frontend/bootstrap/normalized`
+### `GET /panel/bootstrap/normalized`
 - Vazifa: eski bootstrapga o'xshash, lekin duplicate kamroq (`entities + ids` format).
 - Query:
   - `include_inactive` (bool, default: `false`)
@@ -223,9 +223,9 @@ Quyida **har bir endpoint** uchun: vazifa, nima yuboriladi, nima qaytadi.
   - `entities.categories|collections|colors|sizes|products|product_items|product_photos|product_details`
   - `result.product_ids`
 - Izoh:
-  - eski endpoint saqlanadi (`/frontend/bootstrap`)
+  - legacy endpoint o'rniga admin endpoint ishlatiladi (`/panel/bootstrap`)
   - yangi endpointda bir xil obyektlar bitta joyda saqlanadi, bog'lanishlar `*_ids` orqali beriladi.
-  - tayyor TypeScript tiplari: `frontend_bootstrap_normalized.types.ts`
+  - tayyor TypeScript tiplari: `frontend_bootstrap_normalized.types.ts` (ixtiyoriy, admin uchun ham mos)
 
 ---
 

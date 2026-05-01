@@ -47,7 +47,14 @@ class AsyncDatabaseSession:
             raise
 
     def init(self):
-        self._engine = create_async_engine(conf.db.db_url)
+        self._engine = create_async_engine(
+            conf.db.db_url,
+            pool_pre_ping=True,
+            pool_size=conf.db.POOL_SIZE,
+            max_overflow=conf.db.MAX_OVERFLOW,
+            pool_timeout=conf.db.POOL_TIMEOUT,
+            pool_recycle=conf.db.POOL_RECYCLE,
+        )
         self._session_factory = sessionmaker(self._engine, expire_on_commit=False, class_=AsyncSession)
         self._session = async_scoped_session(self._session_factory, scopefunc=asyncio.current_task)
 

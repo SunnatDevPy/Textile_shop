@@ -221,7 +221,7 @@ function bindDashboard() {
 
   document.getElementById("loadBootstrapBtn").addEventListener("click", async () => {
     try {
-      const data = await api("/frontend/bootstrap");
+      const data = await api("/panel/bootstrap");
       out("dashboardOut", data);
       setStatus("Frontend bootstrap loaded.");
     } catch (e) {
@@ -485,6 +485,126 @@ function bindProducts() {
       out("productsOut", await api("/products", { method: "POST", body: formData }));
       setStatus("Product created.");
     } catch (e) {
+      setStatus(e.message, true);
+    }
+  });
+
+  function normalizePhotoUrl(rawPhotoPath) {
+    const raw = String(rawPhotoPath || "").trim();
+    if (!raw) return "";
+    if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+    if (raw.startsWith("/media/")) return `${state.baseUrl}${raw}`;
+    if (raw.startsWith("media/")) return `${state.baseUrl}/${raw}`;
+    return `${state.baseUrl}/media/${raw.replace(/^\/+/, "")}`;
+  }
+
+  function renderProductByIdCard(payload) {
+    const wrap = document.getElementById("productByIdCard");
+    if (!wrap) return;
+
+    const product = payload?.product || {};
+    const photos = Array.isArray(payload?.photos) ? payload.photos : [];
+    const details = Array.isArray(payload?.details) ? payload.details : [];
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+
+    const photoSrc = normalizePhotoUrl(
+      photos.find((p) => p && p.photo)?.photo
+    );
+
+    const detailsHtml = details.length
+      ? details
+          .map(
+            (d) =>
+              `<li>${esc(d.name_uz || "-")} / ${esc(d.name_ru || "-")} / ${esc(d.name_eng || "-")}</li>`
+          )
+          .join("")
+      : "<li>Detail topilmadi</li>";
+
+    const itemsHtml = items.length
+      ? items
+          .map(
+            (i) =>
+              `<li>ID ${esc(i.id)} | color_id: ${esc(i.color_id)} | size_id: ${esc(i.size_id)} | count: ${esc(i.total_count)}</li>`
+          )
+          .join("")
+      : "<li>Item topilmadi</li>";
+
+    wrap.style.display = "block";
+    wrap.innerHTML = `
+      <div style="display:grid;grid-template-columns:minmax(180px,260px) 1fr;gap:14px;align-items:start">
+        <div style="border:1px solid #334155;border-radius:10px;padding:8px;background:#0b1324;min-height:180px;display:flex;align-items:center;justify-content:center">
+          ${
+            photoSrc
+              ? `<img src="${esc(photoSrc)}" alt="product photo" style="max-width:100%;max-height:260px;border-radius:8px;object-fit:contain" />`
+              : `<span class="help">Rasm topilmadi</span>`
+          }
+        </div>
+        <div>
+          <h4 style="margin:0 0 8px">Mahsulot #${esc(product.id)}</h4>
+          <div class="help" style="margin-bottom:8px">
+            <strong>${esc(product.name_uz || "-")}</strong><br/>
+            ${esc(product.name_ru || "-")}<br/>
+            ${esc(product.name_eng || "-")}
+          </div>
+          <div class="help" style="margin-bottom:8px">
+            Narx: ${esc(product.price)} | Holati: ${esc(product.is_active)} | Turi: ${esc(product.clothing_type)}
+          </div>
+          <div class="help" style="margin-bottom:8px">
+            category_id: ${esc(product.category_id)} | collection_id: ${esc(product.collection_id)}
+          </div>
+          <div class="help" style="margin-bottom:6px">Tavsif:</div>
+          <ul style="margin:0 0 10px 18px">
+            <li>${esc(product.description_uz || "-")}</li>
+            <li>${esc(product.description_ru || "-")}</li>
+            <li>${esc(product.description_eng || "-")}</li>
+          </ul>
+          <div class="help" style="margin-bottom:6px">Detallar:</div>
+          <ul style="margin:0 0 10px 18px">${detailsHtml}</ul>
+          <div class="help" style="margin-bottom:6px">Variantlar:</div>
+          <ul style="margin:0 0 0 18px">${itemsHtml}</ul>
+        </div>
+      </div>
+    `;
+  }
+
+  document.getElementById("getProductByIdForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const fd = new FormData(ev.target);
+    const productId = Number(fd.get("product_id"));
+    if (!productId || productId < 1) {
+      setStatus("product_id noto'g'ri", true);
+      return;
+    }
+
+    try {
+      const [productRes, photosRes, itemsRes, detailsRes] = await Promise.all([
+        api(`/products/${productId}`),
+        api(`/product-photos?product_id=${productId}`),
+        api(`/product-items/product/${productId}`),
+        api(`/product-details/product/${productId}`),
+      ]);
+
+      const product = productRes?.product;
+      if (!product) {
+        throw new Error("Mahsulot topilmadi");
+      }
+
+      const payload = {
+        product,
+        photos: Array.isArray(photosRes) ? photosRes : [],
+        items: Array.isArray(itemsRes) ? itemsRes : [],
+        details: Array.isArray(detailsRes) ? detailsRes : [],
+      };
+
+      renderProductByIdCard(payload);
+      out("productsOut", payload);
+      setStatus(`Mahsulot #${productId} muvaffaqiyatli topildi.`);
+    } catch (e) {
+      const wrap = document.getElementById("productByIdCard");
+      if (wrap) {
+        wrap.style.display = "block";
+        wrap.innerHTML = `<div class="help">Topilmadi yoki xatolik: ${esc(e.message)}</div>`;
+      }
       setStatus(e.message, true);
     }
   });

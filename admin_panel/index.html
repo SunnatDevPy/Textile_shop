@@ -190,6 +190,15 @@
             </div>
           </div>
           <div class="card">
+            <h3>ID bo'yicha tekshirish</h3>
+            <p class="help">Mahsulot ID kiriting: topilsa rasm va ma'lumotlar pastda chiqadi.</p>
+            <form id="getProductByIdForm" class="form">
+              <input name="product_id" type="number" min="1" required placeholder="product_id" />
+              <button type="submit">ID bo'yicha topish</button>
+            </form>
+            <div id="productByIdCard" class="table-wrap" style="display:none"></div>
+          </div>
+          <div class="card">
             <h3>Yangi mahsulot</h3>
             <form id="createProductForm" class="form">
               <input name="category_id" required placeholder="category_id" />

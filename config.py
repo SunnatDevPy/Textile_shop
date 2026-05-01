@@ -22,6 +22,10 @@ class DatabaseConfig(BaseConfig):
     PASS: str = os.getenv('DB_PASS')
     HOST: str = os.getenv('DB_HOST')
     PORT: str = os.getenv('DB_PORT')
+    POOL_SIZE: int = int(os.getenv('DB_POOL_SIZE', '20'))
+    MAX_OVERFLOW: int = int(os.getenv('DB_MAX_OVERFLOW', '30'))
+    POOL_TIMEOUT: int = int(os.getenv('DB_POOL_TIMEOUT', '60'))
+    POOL_RECYCLE: int = int(os.getenv('DB_POOL_RECYCLE', '1800'))
 
     @property
     def db_url(self):
