@@ -1,7 +1,8 @@
+import asyncio
 from datetime import datetime
 
 from sqlalchemy import BigInteger, delete as sqlalchemy_delete, DateTime, update as sqlalchemy_update, func
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncAttrs
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncAttrs, async_scoped_session
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Mapped, mapped_column, selectinload
@@ -28,6 +29,7 @@ class Base(AsyncAttrs, DeclarativeBase):
 class AsyncDatabaseSession:
     def __init__(self):
         self._session = None
+        self._session_factory = None
         self._engine = None
 
     def __getattr__(self, name):
@@ -46,7 +48,12 @@ class AsyncDatabaseSession:
 
     def init(self):
         self._engine = create_async_engine(conf.db.db_url)
-        self._session = sessionmaker(self._engine, expire_on_commit=False, class_=AsyncSession)()
+        self._session_factory = sessionmaker(self._engine, expire_on_commit=False, class_=AsyncSession)
+        self._session = async_scoped_session(self._session_factory, scopefunc=asyncio.current_task)
+
+    async def remove(self):
+        # Close current task-bound session and remove it from scope registry.
+        await self._session.remove()
 
     async def create_all(self):
         async with self._engine.begin() as conn:

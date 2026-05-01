@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 from sqlalchemy import text
@@ -111,6 +111,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def db_session_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    finally:
+        await db.remove()
 
 
 @app.options("/{full_path:path}")
