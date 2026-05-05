@@ -46,8 +46,11 @@ ALLOWED_STATUS_TRANSITIONS = {
         Order.StatusOrder.DELIVERED.value,
         Order.StatusOrder.CANCELLED.value,
     },
-    Order.StatusOrder.DELIVERED.value: set(),
+    Order.StatusOrder.DELIVERED.value: {
+        Order.StatusOrder.RETURNED.value,
+    },
     Order.StatusOrder.CANCELLED.value: set(),
+    Order.StatusOrder.RETURNED.value: set(),
 }
 
 ORDER_SORT_FIELDS = {
@@ -516,12 +519,19 @@ async def update_order_status(
         )
 
     current = _status_value(order.status)
-    allowed_next = ALLOWED_STATUS_TRANSITIONS.get(current, set())
-    if new_status not in allowed_next and new_status != current:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Noto'g'ri status transition: {current} -> {new_status}",
-        )
+
+    # CANCELLED ga har qanday statusdan o'tish mumkin
+    if new_status == Order.StatusOrder.CANCELLED.value:
+        pass  # Ruxsat berilgan
+    elif new_status == current:
+        pass  # O'zgarish yo'q
+    else:
+        allowed_next = ALLOWED_STATUS_TRANSITIONS.get(current, set())
+        if new_status not in allowed_next:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Noto'g'ri status transition: {current} -> {new_status}. Faqat oldinga o'tish yoki bekor qilish mumkin.",
+            )
 
     paid_statuses = {
         Order.StatusOrder.PAID.value,

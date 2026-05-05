@@ -36,6 +36,7 @@ class Product(BaseModel):
     class ClothingType(str, Enum):
         MEN = "erkak"
         WOMEN = "ayol"
+        UNISEX = "unisex"
 
     category_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("categories.id", ondelete='CASCADE'))
     collection_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("collections.id", ondelete='CASCADE'))
@@ -118,6 +119,7 @@ class Order(CreatedBaseModel):
         IN_PROGRESS = "yetkazilmoqda"
         DELIVERED = "yetkazildi"
         CANCELLED = "bekor qilindi"
+        RETURNED = "vozvrat"
 
     class Payment(str, Enum):
         CLICK = "click"
@@ -138,6 +140,7 @@ class Order(CreatedBaseModel):
     postcode_zip: Mapped[int]
 
     order_items: Mapped[list['OrderItem']] = relationship('OrderItem', lazy='selectin', back_populates='order')
+    payment_receipts: Mapped[list['PaymentReceipt']] = relationship('PaymentReceipt', lazy='selectin', back_populates='order')
 
 
 class OrderItem(BaseModel):
@@ -152,3 +155,19 @@ class OrderItem(BaseModel):
     order: Mapped['Order'] = relationship('Order', back_populates='order_items')
     product: Mapped['Product'] = relationship('Product', lazy='selectin', back_populates='order_items')
     product_item: Mapped['ProductItems'] = relationship('ProductItems', lazy='selectin')
+
+
+class PaymentReceipt(CreatedBaseModel):
+    """Payme va Click to'lov cheklari"""
+    order_id: Mapped[int] = mapped_column(BIGINT, ForeignKey(Order.id, ondelete='CASCADE'))
+    payment_system: Mapped[str] = mapped_column(String(20))  # payme, click
+    transaction_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    amount: Mapped[int] = mapped_column(BIGINT)  # tiyin/kopeykalarda
+    state: Mapped[int] = mapped_column(default=0)  # Payme: -2,-1,0,1,2
+    create_time: Mapped[int] = mapped_column(BIGINT, nullable=True)  # Unix timestamp
+    perform_time: Mapped[int] = mapped_column(BIGINT, nullable=True)  # Unix timestamp
+    cancel_time: Mapped[int] = mapped_column(BIGINT, nullable=True)  # Unix timestamp
+    reason: Mapped[int] = mapped_column(nullable=True)  # Bekor qilish sababi kodi
+    receipt_data: Mapped[str] = mapped_column(String, nullable=True)  # JSON formatda to'liq ma'lumot
+
+    order: Mapped['Order'] = relationship('Order', back_populates='payment_receipts')

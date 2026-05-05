@@ -39,7 +39,12 @@ class Configuration:
     ADMIN_PASS: str = os.getenv('ADMIN_PASS')
     ADMIN_USERNAME: str = os.getenv('ADMIN_USERNAME')
     CLICK_SECRET_KEY: str = os.getenv('CLICK_SECRET_KEY', '')
+    CLICK_MERCHANT_ID: str = os.getenv('CLICK_MERCHANT_ID', '')
+    CLICK_SERVICE_ID: str = os.getenv('CLICK_SERVICE_ID', '')
+    CLICK_MERCHANT_USER_ID: str = os.getenv('CLICK_MERCHANT_USER_ID', '')
+    PAYME_MERCHANT_ID: str = os.getenv('PAYME_MERCHANT_ID', '')
     PAYME_SECRET_KEY: str = os.getenv('PAYME_SECRET_KEY', '')
+    PAYME_ENDPOINT: str = os.getenv('PAYME_ENDPOINT', 'https://checkout.paycom.uz')
     PAYMENT_CALLBACK_IP_WHITELIST: str = os.getenv('PAYMENT_CALLBACK_IP_WHITELIST', '')
     RATE_LIMIT_PER_MINUTE: int = int(os.getenv('RATE_LIMIT_PER_MINUTE', '120'))
     SMTP_ENABLED: bool = os.getenv('SMTP_ENABLED', 'false').lower() in {'1', 'true', 'yes', 'on'}
