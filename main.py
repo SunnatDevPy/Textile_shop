@@ -33,6 +33,10 @@ from fast_routers.telegram_bot import telegram_router
 from fast_routers.payme import payme_router
 from fast_routers.click import click_router
 from fast_routers.payment_urls import payment_url_router
+from fast_routers.stock_movements import router as stock_movements_router
+from fast_routers.dashboard import router as dashboard_router
+from fast_routers.alerts import router as alerts_router
+from fast_routers.bot_settings import router as bot_settings_router
 from models import db
 from utils.performance import PerformanceMonitoringMiddleware
 from utils.logger import logger
@@ -63,6 +67,10 @@ async def lifespan(app: FastAPI):
     app.include_router(payme_router)
     app.include_router(click_router)
     app.include_router(payment_url_router)
+    app.include_router(stock_movements_router)
+    app.include_router(dashboard_router)
+    app.include_router(alerts_router)
+    app.include_router(bot_settings_router)
     await db.create_all()
     # Legacy DBlar uchun color_code ustunini avtomatik qo'shamiz.
     await db.execute(text("ALTER TABLE colors ADD COLUMN IF NOT EXISTS color_code VARCHAR(255)"))
@@ -72,6 +80,8 @@ async def lifespan(app: FastAPI):
     await db.execute(text("UPDATE products SET clothing_type = COALESCE(clothing_type, 'erkak')"))
     # Legacy DBlar uchun RETURNED statusini qo'shamiz
     await db.execute(text("ALTER TYPE statusorder ADD VALUE IF NOT EXISTS 'vozvrat'"))
+    # Legacy DBlar uchun min_stock_level ustunini qo'shamiz
+    await db.execute(text("ALTER TABLE product_items ADD COLUMN IF NOT EXISTS min_stock_level BIGINT DEFAULT 10"))
     await db.commit()
     logger.info("Database migrations completed")
 

@@ -305,8 +305,19 @@ async def click_complete(request: ClickCompleteRequest):
             perform_time=perform_time
         )
 
-        # Buyurtma statusini yangilash
+        # Buyurtma statusini yangilash va stock kamaytirish
+        from fast_routers.orders import _deduct_stock_for_order
+        from utils.telegram_bot import send_payment_notification
+
+        await _deduct_stock_for_order(receipt.order_id)
         await Order.update(receipt.order_id, status=Order.StatusOrder.PAID.value)
+
+        # Payment notification yuborish
+        await send_payment_notification(
+            order_id=receipt.order_id,
+            amount=receipt.amount // 100,  # Tiyin -> So'm
+            payment_system='click'
+        )
 
         return {
             "click_trans_id": request.click_trans_id,
@@ -316,6 +327,13 @@ async def click_complete(request: ClickCompleteRequest):
             "error_note": "Success"
         }
     except Exception as e:
+        # Agar xatolik bo'lsa, tranzaksiyani bekor qilish
+        await PaymentReceipt.update(
+            receipt.id,
+            state=-1,
+            cancel_time=int(datetime.utcnow().timestamp() * 1000),
+            reason=-9
+        )
         return {
             "click_trans_id": request.click_trans_id,
             "merchant_trans_id": request.merchant_trans_id,

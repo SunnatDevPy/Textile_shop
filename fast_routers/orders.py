@@ -18,7 +18,7 @@ from utils.audit import write_audit_log
 from utils.notifications import send_order_status_email
 from utils.response import ok_response
 from utils.security import enforce_rate_limit
-from utils.telegram_bot import send_new_order_notification, send_order_status_notification
+from utils.telegram_bot import send_new_order_notification, send_order_status_notification, send_low_stock_notification
 
 order_router = APIRouter(prefix='/order', tags=['Orders'])
 
@@ -71,6 +71,9 @@ def _status_value(s: Union[str, object, None]) -> Optional[str]:
 
 
 async def _deduct_stock_for_order(order_id: int) -> None:
+    """Buyurtma uchun ombordan mahsulot kamaytirish va stock movement yaratish"""
+    from models import StockMovement
+
     lines = await OrderItem.get_order_items(order_id)
     if not lines:
         raise HTTPException(
@@ -95,6 +98,31 @@ async def _deduct_stock_for_order(order_id: int) -> None:
                     f"kerak={oi.count})"
                 ),
             )
+
+        # Stock movement yaratish
+        movement = StockMovement(
+            product_item_id=oi.product_item_id,
+            movement_type="chiqim",
+            quantity=oi.count,
+            reason="sotuv",
+            reference_id=order_id,
+            notes=f"Buyurtma #{order_id} uchun sotuv",
+            created_by=None
+        )
+        db.add(movement)
+
+        # Low stock tekshirish va notification
+        product_item = await db.get(ProductItems, oi.product_item_id)
+        if product_item and product_item.is_low_stock:
+            product = await db.get(Product, product_item.product_id)
+            if product:
+                await send_low_stock_notification(
+                    product_name=product.name_uz,
+                    current_stock=product_item.total_count,
+                    min_stock=product_item.min_stock_level
+                )
+
+    await db.commit()
 
 
 class OrderLineIn(BaseModel):

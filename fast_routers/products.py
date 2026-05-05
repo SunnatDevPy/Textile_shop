@@ -76,11 +76,7 @@ async def search_products(
     return ok_response(products, meta={"count": len(products)})
 
 
-@shop_product_router.get(
-    '/search/advanced',
-    name='Advanced product search',
-    summary="Mahsulotlarni kengaytirilgan filter bilan qidirish",
-)
+@shop_product_router.get('/search/advanced', name='Advanced product search', summary="Mahsulotlarni kengaytirilgan filter bilan qidirish")
 async def search_products_advanced(
     search: Optional[str] = None,
     category_id: Optional[int] = None,
@@ -89,9 +85,28 @@ async def search_products_advanced(
     min_price: Optional[int] = None,
     max_price: Optional[int] = None,
     clothing_type: Optional[str] = None,
+    color_id: Optional[int] = None,
+    size_id: Optional[int] = None,
+    in_stock: Optional[bool] = None,
+    sort_by: str = "id",
+    sort_dir: str = "desc",
     limit: int = 100,
 ):
-    query = select(Product)
+    """
+    Kengaytirilgan qidiruv:
+    - search: mahsulot nomi (uz/ru/eng)
+    - category_id, collection_id: kategoriya/kolleksiya
+    - min_price, max_price: narx oralig'i
+    - clothing_type: erkak/ayol/unisex
+    - color_id, size_id: rang va o'lcham
+    - in_stock: faqat omborda bor mahsulotlar
+    - sort_by: id, name_uz, price, created_at
+    - sort_dir: asc, desc
+    """
+    from models import ProductItems
+    from sqlalchemy.orm import joinedload
+
+    query = select(Product).options(joinedload(Product.product_items))
     criteria = []
 
     if search:
@@ -111,12 +126,41 @@ async def search_products_advanced(
         criteria.append(Product.price <= max_price)
     if clothing_type is not None:
         criteria.append(Product.clothing_type == clothing_type)
+
+    # Rang va o'lcham bo'yicha filter
+    if color_id is not None or size_id is not None or in_stock is not None:
+        subquery = select(ProductItems.product_id).distinct()
+        item_criteria = []
+        if color_id is not None:
+            item_criteria.append(ProductItems.color_id == color_id)
+        if size_id is not None:
+            item_criteria.append(ProductItems.size_id == size_id)
+        if in_stock:
+            item_criteria.append(ProductItems.total_count > 0)
+        if item_criteria:
+            subquery = subquery.where(and_(*item_criteria))
+        criteria.append(Product.id.in_(subquery))
+
     if criteria:
         query = query.where(and_(*criteria))
 
+    # Sorting
+    sort_fields = {
+        "id": Product.id,
+        "name_uz": Product.name_uz,
+        "price": Product.price,
+        "created_at": Product.created_at,
+    }
+    sort_col = sort_fields.get(sort_by, Product.id)
+    if sort_dir.lower() == "asc":
+        query = query.order_by(asc(sort_col))
+    else:
+        query = query.order_by(desc(sort_col))
+
     query = query.limit(max(1, min(limit, 500)))
-    products = (await db.execute(query)).scalars().all()
-    return ok_response(products, meta={"count": len(products)})
+    products = (await db.execute(query)).scalars().unique().all()
+
+    return ok_response(products, meta={"count": len(products), "sort_by": sort_by, "sort_dir": sort_dir})
 
 
 @shop_product_router.get('/category/{category_id}', name='Products by category', summary="Kategoriya bo'yicha mahsulotlar")

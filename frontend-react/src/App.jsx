@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DashboardStats, BotSettings, StockMovements, LowStockAlerts } from "./components";
 
 const ORDER_SORT_FIELDS = ["created_at", "id", "status", "payment", "first_name"];
 const PRODUCT_SORT_FIELDS = ["id", "name_uz", "price", "is_active", "clothing_type"];
@@ -497,6 +498,10 @@ function App() {
           <button className={`tab-btn ${activeTab === "collections" ? "active" : ""}`} onClick={() => setActiveTab("collections")}>Kolleksiyalar</button>
           <button className={`tab-btn ${activeTab === "colors" ? "active" : ""}`} onClick={() => setActiveTab("colors")}>Ranglar</button>
           <button className={`tab-btn ${activeTab === "sizes" ? "active" : ""}`} onClick={() => setActiveTab("sizes")}>O'lchamlar</button>
+          <button className={`tab-btn ${activeTab === "statistics" ? "active" : ""}`} onClick={() => setActiveTab("statistics")}>📊 Statistika</button>
+          <button className={`tab-btn ${activeTab === "stock" ? "active" : ""}`} onClick={() => setActiveTab("stock")}>📦 Ombor</button>
+          <button className={`tab-btn ${activeTab === "alerts" ? "active" : ""}`} onClick={() => setActiveTab("alerts")}>⚠️ Ogohlantirishlar</button>
+          <button className={`tab-btn ${activeTab === "bot-settings" ? "active" : ""}`} onClick={() => setActiveTab("bot-settings")}>🤖 Bot</button>
         </aside>
 
         <section className="content">
@@ -511,6 +516,22 @@ function App() {
               </div>
               <pre className="output">{dashboardOut}</pre>
             </div>
+          )}
+
+          {activeTab === "statistics" && (
+            <DashboardStats api={api} baseUrl={baseUrl} setOk={setOk} setErr={setErr} />
+          )}
+
+          {activeTab === "stock" && (
+            <StockMovements api={api} setOk={setOk} setErr={setErr} />
+          )}
+
+          {activeTab === "alerts" && (
+            <LowStockAlerts api={api} setOk={setOk} setErr={setErr} />
+          )}
+
+          {activeTab === "bot-settings" && (
+            <BotSettings api={api} setOk={setOk} setErr={setErr} />
           )}
 
           {activeTab === "orders" && (

@@ -275,8 +275,24 @@ async def perform_transaction(params: dict):
         perform_time=perform_time
     )
 
-    # Buyurtma statusini yangilash
-    await Order.update(receipt.order_id, status=Order.StatusOrder.PAID.value)
+    # Buyurtma statusini yangilash va stock kamaytirish
+    from fast_routers.orders import _deduct_stock_for_order
+    from utils.telegram_bot import send_payment_notification
+
+    try:
+        await _deduct_stock_for_order(receipt.order_id)
+        await Order.update(receipt.order_id, status=Order.StatusOrder.PAID.value)
+
+        # Payment notification yuborish
+        await send_payment_notification(
+            order_id=receipt.order_id,
+            amount=receipt.amount // 100,  # Tiyin -> So'm
+            payment_system='payme'
+        )
+    except Exception as e:
+        # Agar stock kamaytirish xato bo'lsa, tranzaksiyani bekor qilish
+        await PaymentReceipt.update(receipt.id, state=-1, cancel_time=perform_time, reason=1)
+        raise
 
     return {
         "transaction": str(receipt.id),

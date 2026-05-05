@@ -90,8 +90,14 @@ class ProductItems(BaseModel):
     size_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("sizes.id", ondelete='CASCADE'))
 
     total_count: Mapped[int]
+    min_stock_level: Mapped[int] = mapped_column(BigInteger, default=10)  # Minimal qoldiq
     product: Mapped['Product'] = relationship('Product', back_populates='product_items')
     order_lines: Mapped[list['OrderItem']] = relationship('OrderItem', back_populates='product_item')
+
+    @property
+    def is_low_stock(self) -> bool:
+        """Mahsulot kam qolganligini tekshirish"""
+        return self.total_count <= self.min_stock_level
 
     @classmethod
     async def get_product_items(cls, id_):
