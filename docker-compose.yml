@@ -16,7 +16,19 @@ services:
       - "8000:8000"
     volumes:
       - ./media:/app/media
+      - ./logs:/app/logs
     restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
+    container_name: textile_frontend
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    depends_on:
+      - app
 
   bot:
     build:

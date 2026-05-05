@@ -6,7 +6,7 @@ from sqlalchemy import select, func, and_, desc
 from sqlalchemy.orm import joinedload
 
 from models import db, Order, OrderItem, Product, ProductItems, AdminUser
-from fast_routers.admin_users import get_current_admin_user
+from fast_routers.admin_auth import verify_admin_credentials
 from utils.logger import logger
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/statistics")
 async def get_dashboard_statistics(
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Dashboard statistikasi - bugungi, haftalik, oylik"""
 
@@ -170,7 +170,7 @@ async def get_dashboard_statistics(
 @router.get("/sales-chart")
 async def get_sales_chart(
     days: int = Query(30, le=365),
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Sotuvlar grafigi - kunlik ma'lumotlar"""
 
@@ -211,7 +211,7 @@ async def get_sales_chart(
 async def get_top_products(
     period: str = Query("month", regex="^(week|month|year)$"),
     limit: int = Query(10, le=50),
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Eng ko'p sotiladigan mahsulotlar"""
 
@@ -256,7 +256,7 @@ async def get_top_products(
 
 @router.get("/orders-by-status")
 async def get_orders_by_status(
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Buyurtmalar status bo'yicha"""
 

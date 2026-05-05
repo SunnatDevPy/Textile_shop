@@ -10,7 +10,7 @@ function pretty(value) {
 
 function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [baseUrl, setBaseUrl] = useState(localStorage.getItem("admin_base_url") || window.location.origin);
+  const [baseUrl, setBaseUrl] = useState(localStorage.getItem("admin_base_url") || "/api");
   const [username, setUsername] = useState(localStorage.getItem("admin_username") || "");
   const [password, setPassword] = useState(localStorage.getItem("admin_password") || "");
   const [statusLine, setStatusLine] = useState("Tayyor. Auth ma'lumotlarini saqlang.");

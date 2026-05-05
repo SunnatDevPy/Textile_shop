@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 
 from models import db, StockMovement, ProductItems, AdminUser
 from models.stock_movements import StockMovement as StockMovementModel
-from fast_routers.admin_users import get_current_admin_user
+from fast_routers.admin_auth import verify_admin_credentials
 from utils.logger import logger
 
 router = APIRouter(prefix="/stock-movements", tags=["Stock Movements"])
@@ -40,7 +40,7 @@ class StockMovementResponse(BaseModel):
 @router.post("/", response_model=StockMovementResponse)
 async def create_stock_movement(
     data: StockMovementCreate,
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Ombor harakatini yaratish"""
 
@@ -97,7 +97,7 @@ async def get_stock_movements(
     reason: Optional[str] = None,
     limit: int = Query(100, le=500),
     offset: int = 0,
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Ombor harakatlarini olish"""
 
@@ -127,7 +127,7 @@ async def get_stock_movements(
 async def get_product_item_history(
     product_item_id: int,
     limit: int = Query(50, le=200),
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Mahsulot uchun ombor harakatlari tarixi"""
 
@@ -153,7 +153,7 @@ async def get_product_item_history(
 
 @router.get("/statistics")
 async def get_stock_statistics(
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Ombor statistikasi"""
 

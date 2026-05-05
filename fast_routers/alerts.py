@@ -4,7 +4,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import joinedload
 
 from models import db, ProductItems, Product, AdminUser
-from fast_routers.admin_users import get_current_admin_user
+from fast_routers.admin_auth import verify_admin_credentials
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/alerts", tags=["Alerts"])
 @router.get("/low-stock")
 async def get_low_stock_alerts(
     limit: int = Query(100, le=500),
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Kam qolgan mahsulotlar ro'yxati"""
 
@@ -47,7 +47,7 @@ async def get_low_stock_alerts(
 @router.get("/out-of-stock")
 async def get_out_of_stock_alerts(
     limit: int = Query(100, le=500),
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Tugagan mahsulotlar ro'yxati"""
 
@@ -78,7 +78,7 @@ async def get_out_of_stock_alerts(
 async def update_min_stock_level(
     item_id: int,
     min_stock_level: int,
-    current_user: AdminUser = Depends(get_current_admin_user)
+    current_user: AdminUser = Depends(verify_admin_credentials)
 ):
     """Minimal qoldiq darajasini yangilash"""
 
