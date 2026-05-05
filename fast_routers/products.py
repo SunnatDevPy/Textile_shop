@@ -34,10 +34,16 @@ def _require_image_upload(photo: UploadFile) -> None:
 
 
 @shop_product_router.get('', name='Get all products', summary="Barcha mahsulotlar ro'yxati")
-async def get_all_products(include_inactive: bool = False):
-    products = await Product.all()
+async def get_all_products(include_inactive: bool = False, limit: int = 100):
+    """
+    Barcha mahsulotlar ro'yxati (default: faqat faol mahsulotlar).
+    Limit: max 500 ta mahsulot.
+    """
+    limit = max(1, min(limit, 500))
+    query = select(Product).limit(limit)
     if not include_inactive:
-        products = [p for p in products if bool(getattr(p, "is_active", False))]
+        query = query.where(Product.is_active == True)
+    products = (await db.execute(query)).scalars().all()
     return products
 
 
@@ -46,15 +52,27 @@ async def search_products(
     search: Optional[str] = None,
     category_id: Optional[int] = None,
     include_inactive: bool = False,
+    limit: int = 100,
 ):
+    """
+    Mahsulotlarni qidirish. Limit: max 500.
+    """
+    limit = max(1, min(limit, 500))
+    query = select(Product).limit(limit)
+
+    criteria = []
     if search:
-        products = await Product.search(search, category_id)
-    elif category_id is not None:
-        products = await Product.get_products_category(category_id)
-    else:
-        products = await Product.all()
+        s = f"%{search}%"
+        criteria.append((Product.name_uz.ilike(s)) | (Product.name_ru.ilike(s)) | (Product.name_eng.ilike(s)))
+    if category_id is not None:
+        criteria.append(Product.category_id == category_id)
     if not include_inactive:
-        products = [p for p in products if bool(getattr(p, "is_active", False))]
+        criteria.append(Product.is_active == True)
+
+    if criteria:
+        query = query.where(and_(*criteria))
+
+    products = (await db.execute(query)).scalars().all()
     return ok_response(products, meta={"count": len(products)})
 
 
@@ -102,10 +120,15 @@ async def search_products_advanced(
 
 
 @shop_product_router.get('/category/{category_id}', name='Products by category', summary="Kategoriya bo'yicha mahsulotlar")
-async def list_products_by_category(category_id: int, include_inactive: bool = False):
-    products = await Product.get_products_category(category_id)
+async def list_products_by_category(category_id: int, include_inactive: bool = False, limit: int = 100):
+    """
+    Kategoriya bo'yicha mahsulotlar. Limit: max 500.
+    """
+    limit = max(1, min(limit, 500))
+    query = select(Product).where(Product.category_id == category_id).limit(limit)
     if not include_inactive:
-        products = [p for p in products if bool(getattr(p, "is_active", False))]
+        query = query.where(Product.is_active == True)
+    products = (await db.execute(query)).scalars().all()
     return products
 
 

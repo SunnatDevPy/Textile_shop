@@ -1,12 +1,14 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Response, Request
+from fastapi import FastAPI, Response, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy import text
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette import status
 
 from config import conf
 from fast_routers.products import shop_product_router
@@ -32,10 +34,14 @@ from fast_routers.payme import payme_router
 from fast_routers.click import click_router
 from fast_routers.payment_urls import payment_url_router
 from models import db
+from utils.performance import PerformanceMonitoringMiddleware
+from utils.logger import logger
+from utils.rate_limit import RateLimitMiddleware
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting Textile Shop API", {"version": "1.0.0"})
     app.mount("/media", StaticFiles(directory='media'), name='media')
     app.include_router(shop_product_router)
     app.include_router(product_photo_router)
@@ -67,7 +73,25 @@ async def lifespan(app: FastAPI):
     # Legacy DBlar uchun RETURNED statusini qo'shamiz
     await db.execute(text("ALTER TYPE statusorder ADD VALUE IF NOT EXISTS 'vozvrat'"))
     await db.commit()
+    logger.info("Database migrations completed")
+
+    # Create indexes for performance
+    logger.info("Creating database indexes...")
+    try:
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_products_collection ON products(collection_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_product_items_product_id ON product_items(product_id)"))
+        await db.commit()
+        logger.info("Database indexes created successfully")
+    except Exception as e:
+        logger.warning(f"Index creation warning: {str(e)}")
+
     yield
+    logger.info("Shutting down Textile Shop API")
 
 
 app = FastAPI(
@@ -124,11 +148,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add rate limiting middleware
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=int(conf.RATE_LIMIT_PER_MINUTE),
+    requests_per_hour=int(conf.RATE_LIMIT_PER_MINUTE) * 10
+)
+
+# Add performance monitoring middleware
+app.add_middleware(PerformanceMonitoringMiddleware, slow_request_threshold_ms=1000.0)
+
 @app.middleware("http")
 async def db_session_middleware(request: Request, call_next):
     scope_token = db.set_scope(f"req-{id(request)}")
     try:
         return await call_next(request)
+    except Exception as e:
+        logger.error_with_trace(e, {"path": request.url.path, "method": request.method})
+        raise
     finally:
         await db.remove()
         db.reset_scope(scope_token)
@@ -142,3 +179,60 @@ async def preflight_handler(full_path: str):
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
     }
     return Response(status_code=200, headers=headers)
+
+
+# Global exception handlers
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors."""
+    logger.warning(
+        "Validation error",
+        {
+            "path": request.url.path,
+            "method": request.method,
+            "errors": str(exc.errors())
+        }
+    )
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": "Ma'lumotlar noto'g'ri formatda",
+            "errors": exc.errors()
+        }
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions."""
+    logger.warning(
+        f"HTTP {exc.status_code}",
+        {
+            "path": request.url.path,
+            "method": request.method,
+            "detail": exc.detail
+        }
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle all unhandled exceptions."""
+    logger.error_with_trace(
+        exc,
+        {
+            "path": request.url.path,
+            "method": request.method,
+            "client": request.client.host if request.client else "unknown"
+        }
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": "Serverda xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring."
+        }
+    )
