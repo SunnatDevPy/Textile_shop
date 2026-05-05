@@ -416,7 +416,7 @@ async def update_product(
     if photo is not None:
         _require_image_upload(photo)
     if clothing_type is not None:
-        allowed_clothing_types = {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value}
+        allowed_clothing_types = {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value, Product.ClothingType.UNISEX.value}
         if clothing_type not in allowed_clothing_types:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

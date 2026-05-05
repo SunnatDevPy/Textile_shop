@@ -47,30 +47,30 @@ from utils.rate_limit import RateLimitMiddleware
 async def lifespan(app: FastAPI):
     logger.info("Starting Textile Shop API", {"version": "1.0.0"})
     app.mount("/media", StaticFiles(directory='media'), name='media')
-    app.include_router(shop_product_router)
-    app.include_router(product_photo_router)
-    app.include_router(product_items_router)
-    app.include_router(product_detail_router)
-    app.include_router(main_photos_router)
-    app.include_router(order_router)
-    app.include_router(categories_router)
-    app.include_router(collections_router)
-    app.include_router(color_router)
-    app.include_router(size_router)
-    app.include_router(system_router)
-    app.include_router(frontend_router)
-    app.include_router(admin_user_router)
-    app.include_router(payments_router)
-    app.include_router(excel_router)
-    app.include_router(history_router)
-    app.include_router(telegram_router)
-    app.include_router(payme_router)
-    app.include_router(click_router)
-    app.include_router(payment_url_router)
-    app.include_router(stock_movements_router)
-    app.include_router(dashboard_router)
-    app.include_router(alerts_router)
-    app.include_router(bot_settings_router)
+    app.include_router(shop_product_router, prefix="/api")
+    app.include_router(product_photo_router, prefix="/api")
+    app.include_router(product_items_router, prefix="/api")
+    app.include_router(product_detail_router, prefix="/api")
+    app.include_router(main_photos_router, prefix="/api")
+    app.include_router(order_router, prefix="/api")
+    app.include_router(categories_router, prefix="/api")
+    app.include_router(collections_router, prefix="/api")
+    app.include_router(color_router, prefix="/api")
+    app.include_router(size_router, prefix="/api")
+    app.include_router(system_router, prefix="/api")
+    app.include_router(frontend_router, prefix="/api")
+    app.include_router(admin_user_router, prefix="/api")
+    app.include_router(payments_router, prefix="/api")
+    app.include_router(excel_router, prefix="/api")
+    app.include_router(history_router, prefix="/api")
+    app.include_router(telegram_router, prefix="/api")
+    app.include_router(payme_router, prefix="/api")
+    app.include_router(click_router, prefix="/api")
+    app.include_router(payment_url_router, prefix="/api")
+    app.include_router(stock_movements_router, prefix="/api")
+    app.include_router(dashboard_router, prefix="/api")
+    app.include_router(alerts_router, prefix="/api")
+    app.include_router(bot_settings_router, prefix="/api")
     await db.create_all()
     # Legacy DBlar uchun color_code ustunini avtomatik qo'shamiz.
     await db.execute(text("ALTER TABLE colors ADD COLUMN IF NOT EXISTS color_code VARCHAR(255)"))
@@ -116,18 +116,16 @@ app = FastAPI(
         "JWT endpointlari bu loyihada o'chirilgan."
     ),
     version="1.0.0",
-    docs_url="/docs",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
     lifespan=lifespan,
 )
+
+# Frontend (React Admin Panel) - root path
 admin_static_dir = Path("frontend-react/dist")
-if not admin_static_dir.exists():
-    admin_static_dir = Path("admin_panel")
-app.mount("/admin", StaticFiles(directory=str(admin_static_dir), html=True), name="admin_panel")
-
-
-@app.get("/admin", include_in_schema=False)
-async def admin_root_redirect():
-    return RedirectResponse(url="/admin/")
+if admin_static_dir.exists():
+    app.mount("/", StaticFiles(directory=str(admin_static_dir), html=True), name="frontend")
 # app.add_middleware(
 #     # CORSMiddleware,
 #     # # allow_origins=["https://web.telegram.org", "https://your-client.com"],
@@ -174,7 +172,7 @@ async def db_session_middleware(request: Request, call_next):
     try:
         return await call_next(request)
     except Exception as e:
-        logger.error_with_trace(e, {"path": request.url.path, "method": request.method})
+        logger.log_error_with_trace(e, {"path": request.url.path, "method": request.method})
         raise
     finally:
         await db.remove()
@@ -232,7 +230,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Handle all unhandled exceptions."""
-    logger.error_with_trace(
+    logger.log_error_with_trace(
         exc,
         {
             "path": request.url.path,
