@@ -346,7 +346,7 @@ async def create_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Collection topilmadi')
     if photo is not None:
         _require_image_upload(photo)
-    allowed_clothing_types = {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value}
+    allowed_clothing_types = {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value, Product.ClothingType.UNISEX.value}
     if clothing_type not in allowed_clothing_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

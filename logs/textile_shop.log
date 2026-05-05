@@ -8,3 +8,10 @@
 2026-05-06 01:01:23 | INFO     | HTTP Request | method=GET | path=/favicon.ico | status=405 | duration_ms=1.71
 2026-05-06 01:01:26 | INFO     | HTTP Request | method=GET | path=/docs | status=200 | duration_ms=1.86
 2026-05-06 01:01:28 | INFO     | HTTP Request | method=GET | path=/openapi.json | status=200 | duration_ms=394.39
+2026-05-06 01:13:56 | INFO     | HTTP Request | method=GET | path=/docs | status=200 | duration_ms=0.75
+2026-05-06 01:14:02 | INFO     | HTTP Request | method=GET | path=/openapi.json | status=200 | duration_ms=2.81
+2026-05-06 01:16:37 | INFO     | Shutting down Textile Shop API
+2026-05-06 01:16:47 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-06 01:16:48 | INFO     | Database migrations completed
+2026-05-06 01:16:48 | INFO     | Creating database indexes...
+2026-05-06 01:16:48 | INFO     | Database indexes created successfully
