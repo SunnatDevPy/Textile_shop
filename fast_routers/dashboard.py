@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func, and_, desc
+from sqlalchemy import select, func, and_, desc, cast, Date
 from sqlalchemy.orm import joinedload
 
 from models import db, Order, OrderItem, Product, ProductItems, AdminUser
@@ -28,30 +28,54 @@ async def get_dashboard_statistics(
         select(func.count(Order.id)).where(Order.created_at >= today_start)
     )
 
+    # Bugungi daromad - faqat to'langan buyurtmalar
     today_revenue_result = await db.execute(
         select(func.sum(OrderItem.total)).join(Order).where(
             and_(
                 Order.created_at >= today_start,
-                Order.status.in_(["to'landi", "tayyor", "yetkazilmoqda", "yetkazildi"])
+                Order.payment.in_([Order.Payment.CLICK, Order.Payment.PAYME, Order.Payment.CASH])
             )
         )
     )
     today_revenue = today_revenue_result.scalar() or 0
+
+    # Bugungi to'lanmagan buyurtmalar
+    today_unpaid_result = await db.execute(
+        select(func.count(Order.id)).where(
+            and_(
+                Order.created_at >= today_start,
+                Order.status == Order.StatusOrder.NEW
+            )
+        )
+    )
+    today_unpaid = today_unpaid_result.scalar() or 0
 
     # Haftalik statistika
     week_orders = await db.scalar(
         select(func.count(Order.id)).where(Order.created_at >= week_start)
     )
 
+    # Haftalik daromad - faqat to'langan buyurtmalar
     week_revenue_result = await db.execute(
         select(func.sum(OrderItem.total)).join(Order).where(
             and_(
                 Order.created_at >= week_start,
-                Order.status.in_(["to'landi", "tayyor", "yetkazilmoqda", "yetkazildi"])
+                Order.payment.in_([Order.Payment.CLICK, Order.Payment.PAYME, Order.Payment.CASH])
             )
         )
     )
     week_revenue = week_revenue_result.scalar() or 0
+
+    # Haftalik to'lanmagan buyurtmalar
+    week_unpaid_result = await db.execute(
+        select(func.count(Order.id)).where(
+            and_(
+                Order.created_at >= week_start,
+                Order.status == Order.StatusOrder.NEW
+            )
+        )
+    )
+    week_unpaid = week_unpaid_result.scalar() or 0
 
     # Haftalik top mahsulotlar
     week_top_products_query = select(
@@ -79,15 +103,27 @@ async def get_dashboard_statistics(
         select(func.count(Order.id)).where(Order.created_at >= month_start)
     )
 
+    # Oylik daromad - faqat to'langan buyurtmalar
     month_revenue_result = await db.execute(
         select(func.sum(OrderItem.total)).join(Order).where(
             and_(
                 Order.created_at >= month_start,
-                Order.status.in_(["to'landi", "tayyor", "yetkazilmoqda", "yetkazildi"])
+                Order.payment.in_([Order.Payment.CLICK, Order.Payment.PAYME, Order.Payment.CASH])
             )
         )
     )
     month_revenue = month_revenue_result.scalar() or 0
+
+    # Oylik to'lanmagan buyurtmalar
+    month_unpaid_result = await db.execute(
+        select(func.count(Order.id)).where(
+            and_(
+                Order.created_at >= month_start,
+                Order.status == Order.StatusOrder.NEW
+            )
+        )
+    )
+    month_unpaid = month_unpaid_result.scalar() or 0
 
     # O'sish foizi (haftalik vs oldingi hafta)
     prev_week_start = week_start - timedelta(days=7)
@@ -96,7 +132,7 @@ async def get_dashboard_statistics(
             and_(
                 Order.created_at >= prev_week_start,
                 Order.created_at < week_start,
-                Order.status.in_(["to'landi", "tayyor", "yetkazilmoqda", "yetkazildi"])
+                Order.payment.in_([Order.Payment.CLICK, Order.Payment.PAYME, Order.Payment.CASH])
             )
         )
     )
@@ -129,16 +165,19 @@ async def get_dashboard_statistics(
     return {
         "today": {
             "orders_count": today_orders,
-            "revenue": today_revenue
+            "revenue": today_revenue,
+            "unpaid_count": today_unpaid
         },
         "week": {
             "orders_count": week_orders,
             "revenue": week_revenue,
+            "unpaid_count": week_unpaid,
             "top_products": week_top_products
         },
         "month": {
             "orders_count": month_orders,
             "revenue": month_revenue,
+            "unpaid_count": month_unpaid,
             "growth_percent": growth_percent
         },
         "inventory": {
@@ -176,25 +215,29 @@ async def get_sales_chart(
 
     now = datetime.now()
     start_date = datetime(now.year, now.month, now.day) - timedelta(days=days)
+    end_date = datetime(now.year, now.month, now.day, 23, 59, 59, 999999)
 
-    # Kunlik sotuvlar
+    # Kunlik sotuvlar - cast bilan date_trunc o'rniga
     daily_sales_query = select(
-        func.date(Order.created_at).label('date'),
-        func.count(Order.id).label('orders_count'),
-        func.sum(OrderItem.total).label('revenue')
+        cast(Order.created_at, Date).label('date'),
+        func.count(func.distinct(Order.id)).label('orders_count'),
+        func.coalesce(func.sum(OrderItem.total), 0).label('revenue'),
+        func.coalesce(func.sum(OrderItem.count), 0).label('sold_items')
     ).join(OrderItem).where(
         and_(
             Order.created_at >= start_date,
-            Order.status.in_(["to'landi", "tayyor", "yetkazilmoqda", "yetkazildi"])
+            Order.created_at <= end_date,
+            Order.payment.in_([Order.Payment.CLICK, Order.Payment.PAYME, Order.Payment.CASH])
         )
-    ).group_by(func.date(Order.created_at)).order_by('date')
+    ).group_by(cast(Order.created_at, Date)).order_by(cast(Order.created_at, Date))
 
     result = await db.execute(daily_sales_query)
     daily_sales = [
         {
             "date": str(row.date),
             "orders_count": row.orders_count,
-            "revenue": row.revenue or 0
+            "revenue": row.revenue or 0,
+            "sold_items": row.sold_items or 0
         }
         for row in result
     ]
@@ -276,4 +319,54 @@ async def get_orders_by_status(
 
     return {
         "orders_by_status": orders_by_status
+    }
+
+
+@router.get("/orders-by-payment")
+async def get_orders_by_payment(
+    current_user: AdminUser = Depends(verify_admin_credentials)
+):
+    """Buyurtmalar to'lov turi bo'yicha"""
+
+    payment_query = select(
+        Order.payment,
+        func.count(Order.id).label('count'),
+        func.coalesce(func.sum(OrderItem.total), 0).label('total_amount')
+    ).join(OrderItem).group_by(Order.payment)
+
+    result = await db.execute(payment_query)
+    orders_by_payment = [
+        {
+            "payment_type": row.payment,
+            "count": row.count,
+            "total_amount": row.total_amount or 0
+        }
+        for row in result
+    ]
+
+    # To'langan va to'lanmagan statistika
+    paid_query = select(
+        func.count(Order.id).label('paid_count'),
+        func.coalesce(func.sum(OrderItem.total), 0).label('paid_amount')
+    ).join(OrderItem).where(
+        Order.payment.in_([Order.Payment.CLICK, Order.Payment.PAYME, Order.Payment.CASH])
+    )
+
+    unpaid_query = select(
+        func.count(Order.id).label('unpaid_count')
+    ).where(Order.status == Order.StatusOrder.NEW)
+
+    paid_result = await db.execute(paid_query)
+    unpaid_result = await db.execute(unpaid_query)
+
+    paid_row = paid_result.first()
+    unpaid_row = unpaid_result.first()
+
+    return {
+        "orders_by_payment": orders_by_payment,
+        "summary": {
+            "paid_count": paid_row.paid_count if paid_row else 0,
+            "paid_amount": paid_row.paid_amount if paid_row else 0,
+            "unpaid_count": unpaid_row.unpaid_count if unpaid_row else 0
+        }
     }

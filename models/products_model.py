@@ -134,11 +134,11 @@ class Order(CreatedBaseModel):
 
     first_name: Mapped[str] = mapped_column(String)
     last_name: Mapped[str] = mapped_column(String)
-    company_name: Mapped[bool] = mapped_column(String, nullable=True)
+    company_name: Mapped[str] = mapped_column(String, nullable=True)
     country: Mapped[str] = mapped_column(String)
     address: Mapped[str] = mapped_column(String)
     town_city: Mapped[str] = mapped_column(String)
-    payment: Mapped[bool] = mapped_column(SqlEnum(Payment), default=Payment.CLICK.value)
+    payment: Mapped[str] = mapped_column(SqlEnum(Payment), default=Payment.CLICK.value)
     status: Mapped[str] = mapped_column(SqlEnum(StatusOrder))
     state_county: Mapped[str] = mapped_column(String, nullable=True)
     contact: Mapped[str] = mapped_column(String)
