@@ -4,38 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="774920ee-63fe-49ac-b413-a3f7c8d0cf31" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.env" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/fast_routers/collection.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/fast_routers/color.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/fast_routers/size.py" afterDir="false" />
+    <list default="true" id="774920ee-63fe-49ac-b413-a3f7c8d0cf31" name="Changes" comment="new project">
+      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/admin_users.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/admin_users.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/bot_users.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/bot_users.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/call_orders.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/cart.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/contacts.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/excel_save.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/excel_save.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/geopy_project.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/jwt_.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/jwt_.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/love_products.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/main_photos.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/main_photos.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/orders.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/orders.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/shop.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/shop_category.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/category.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/shop_products.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/products.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/work_times.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/fast_routers/dashboard.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/dashboard.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/products_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/products_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/shop_model.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/shop_model.test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/users.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/users.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/base_models_pydantic.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/base_models_pydantic.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,7 +16,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="45" />
+    <option name="cachedIndexableFilesCount" value="110" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -83,7 +56,9 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;FastAPI.Textile_shop.executor&quot;: &quot;Run&quot;,
     &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.check_bcrypt_password.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
@@ -101,6 +76,11 @@
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.AcpAgentsConfigurable&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  },
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;postgresql&quot;
+    ]
   }
 }</component>
   <component name="RecentsManager">
@@ -109,7 +89,31 @@
       <recent name="C:\Users\stalk\FastAPIProject\Textile_shop" />
     </key>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.check_bcrypt_password">
+    <configuration name="check_bcrypt_password" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="Textile_shop" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/check_bcrypt_password.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="Textile_shop" type="Python.FastAPI">
       <option name="file" value="$PROJECT_DIR$/main.py" />
       <module name="Textile_shop" />
@@ -126,6 +130,11 @@
       <option name="launchJavascriptDebuger" value="false" />
       <method v="2" />
     </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.check_bcrypt_password" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
@@ -148,11 +157,72 @@
       <workItem from="1774770701810" duration="9897000" />
       <workItem from="1775022637030" duration="4409000" />
       <workItem from="1775027543399" duration="4203000" />
-      <workItem from="1775284261440" duration="5998000" />
+      <workItem from="1775284261440" duration="7938000" />
+      <workItem from="1775463430320" duration="685000" />
+      <workItem from="1777357598087" duration="24076000" />
+      <workItem from="1777967552793" duration="1015000" />
+      <workItem from="1778009569162" duration="1829000" />
     </task>
+    <task id="LOCAL-00001" summary="new project">
+      <option name="closed" value="true" />
+      <created>1775294271014</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1775294271014</updated>
+    </task>
+    <task id="LOCAL-00002" summary="new project">
+      <option name="closed" value="true" />
+      <created>1777361086464</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1777361086464</updated>
+    </task>
+    <task id="LOCAL-00003" summary="new project">
+      <option name="closed" value="true" />
+      <created>1777363595146</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1777363595146</updated>
+    </task>
+    <task id="LOCAL-00004" summary="new project">
+      <option name="closed" value="true" />
+      <created>1777364685622</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1777364685622</updated>
+    </task>
+    <task id="LOCAL-00005" summary="new project">
+      <option name="closed" value="true" />
+      <created>1777366374691</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1777366374691</updated>
+    </task>
+    <task id="LOCAL-00006" summary="new project">
+      <option name="closed" value="true" />
+      <created>1777366831121</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1777366831121</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="new project" />
+    <option name="LAST_COMMIT_MESSAGE" value="new project" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/Textile_shop$check_bcrypt_password.coverage" NAME="check_bcrypt_password Coverage Results" MODIFIED="1777366506778" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Textile_shop$Textile_shop.coverage" NAME="Textile_shop Coverage Results" MODIFIED="1775294857551" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>

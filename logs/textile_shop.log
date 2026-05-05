@@ -1,0 +1,10 @@
+2026-05-06 00:52:18 | INFO     | Starting fake data generation...
+2026-05-06 00:52:22 | ERROR    | Error generating fake data: [WinError 1225] Удаленный компьютер отклонил это сетевое подключение
+2026-05-06 01:00:15 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-06 01:00:16 | INFO     | Database migrations completed
+2026-05-06 01:00:16 | INFO     | Creating database indexes...
+2026-05-06 01:00:16 | INFO     | Database indexes created successfully
+2026-05-06 01:01:22 | INFO     | HTTP Request | method=GET | path=/ | status=405 | duration_ms=1.39
+2026-05-06 01:01:23 | INFO     | HTTP Request | method=GET | path=/favicon.ico | status=405 | duration_ms=1.71
+2026-05-06 01:01:26 | INFO     | HTTP Request | method=GET | path=/docs | status=200 | duration_ms=1.86
+2026-05-06 01:01:28 | INFO     | HTTP Request | method=GET | path=/openapi.json | status=200 | duration_ms=394.39
