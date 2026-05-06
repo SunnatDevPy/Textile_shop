@@ -3,7 +3,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Warehouse from './pages/Warehouse';
-import ClientShop from './pages/ClientShop';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -28,7 +27,6 @@ function App() {
       <BrowserRouter basename="/admin">
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/client" element={<ClientShop />} />
           <Route
             path="/dashboard"
             element={

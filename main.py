@@ -103,7 +103,17 @@ app.mount("/media", StaticFiles(directory='media'), name='media')
 # Frontend (React Admin Panel) - mount at /admin
 admin_static_dir = Path("frontend-react/dist")
 if admin_static_dir.exists():
-    app.mount("/admin", StaticFiles(directory=str(admin_static_dir), html=True), name="frontend")
+    app.mount("/admin", StaticFiles(directory=str(admin_static_dir), html=True), name="admin_frontend")
+
+# Client Shop - serve client.html at /client
+from fastapi.responses import FileResponse
+
+@app.get("/client")
+async def serve_client():
+    client_file = admin_static_dir / "client.html"
+    if client_file.exists():
+        return FileResponse(client_file)
+    raise HTTPException(status_code=404, detail="Client page not found")
 
 # Include all routers with /api prefix
 app.include_router(shop_product_router, prefix="/api")
