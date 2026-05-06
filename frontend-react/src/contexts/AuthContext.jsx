@@ -62,15 +62,22 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     setLoading(true);
     try {
+      console.log('Attempting login...', { username, baseUrl });
       const response = await fetch(`${baseUrl}/panel/me`, {
         headers: getAuthHeader(username, password),
       });
 
+      console.log('Login response:', response.status, response.ok);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Login failed:', errorText);
         throw new Error('Login yoki parol noto\'g\'ri');
       }
 
       const data = await response.json();
+      console.log('Login successful:', data);
+
       setUser({
         ...data,
         username,
@@ -80,6 +87,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('admin_password', password);
       return { success: true };
     } catch (error) {
+      console.error('Login error:', error);
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
