@@ -46,31 +46,6 @@ from utils.rate_limit import RateLimitMiddleware
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Textile Shop API", {"version": "1.0.0"})
-    app.mount("/media", StaticFiles(directory='media'), name='media')
-    app.include_router(shop_product_router, prefix="/api")
-    app.include_router(product_photo_router, prefix="/api")
-    app.include_router(product_items_router, prefix="/api")
-    app.include_router(product_detail_router, prefix="/api")
-    app.include_router(main_photos_router, prefix="/api")
-    app.include_router(order_router, prefix="/api")
-    app.include_router(categories_router, prefix="/api")
-    app.include_router(collections_router, prefix="/api")
-    app.include_router(color_router, prefix="/api")
-    app.include_router(size_router, prefix="/api")
-    app.include_router(system_router, prefix="/api")
-    app.include_router(frontend_router, prefix="/api")
-    app.include_router(admin_user_router, prefix="/api")
-    app.include_router(payments_router, prefix="/api")
-    app.include_router(excel_router, prefix="/api")
-    app.include_router(history_router, prefix="/api")
-    app.include_router(telegram_router, prefix="/api")
-    app.include_router(payme_router, prefix="/api")
-    app.include_router(click_router, prefix="/api")
-    app.include_router(payment_url_router, prefix="/api")
-    app.include_router(stock_movements_router, prefix="/api")
-    app.include_router(dashboard_router, prefix="/api")
-    app.include_router(alerts_router, prefix="/api")
-    app.include_router(bot_settings_router, prefix="/api")
     await db.create_all()
     # Legacy DBlar uchun color_code ustunini avtomatik qo'shamiz.
     await db.execute(text("ALTER TABLE colors ADD COLUMN IF NOT EXISTS color_code VARCHAR(255)"))
@@ -122,10 +97,39 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Frontend (React Admin Panel) - root path
+# Mount static files BEFORE including routers
+app.mount("/media", StaticFiles(directory='media'), name='media')
+
+# Frontend (React Admin Panel) - mount at /admin
 admin_static_dir = Path("frontend-react/dist")
 if admin_static_dir.exists():
-    app.mount("/", StaticFiles(directory=str(admin_static_dir), html=True), name="frontend")
+    app.mount("/admin", StaticFiles(directory=str(admin_static_dir), html=True), name="frontend")
+
+# Include all routers with /api prefix
+app.include_router(shop_product_router, prefix="/api")
+app.include_router(product_photo_router, prefix="/api")
+app.include_router(product_items_router, prefix="/api")
+app.include_router(product_detail_router, prefix="/api")
+app.include_router(main_photos_router, prefix="/api")
+app.include_router(order_router, prefix="/api")
+app.include_router(categories_router, prefix="/api")
+app.include_router(collections_router, prefix="/api")
+app.include_router(color_router, prefix="/api")
+app.include_router(size_router, prefix="/api")
+app.include_router(system_router, prefix="/api")
+app.include_router(frontend_router, prefix="/api")
+app.include_router(admin_user_router, prefix="/api")
+app.include_router(payments_router, prefix="/api")
+app.include_router(excel_router, prefix="/api")
+app.include_router(history_router, prefix="/api")
+app.include_router(telegram_router, prefix="/api")
+app.include_router(payme_router, prefix="/api")
+app.include_router(click_router, prefix="/api")
+app.include_router(payment_url_router, prefix="/api")
+app.include_router(stock_movements_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
+app.include_router(alerts_router, prefix="/api")
+app.include_router(bot_settings_router, prefix="/api")
 # app.add_middleware(
 #     # CORSMiddleware,
 #     # # allow_origins=["https://web.telegram.org", "https://your-client.com"],
