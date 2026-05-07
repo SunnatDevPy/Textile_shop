@@ -40,16 +40,26 @@ class UpdateOrCreateCollectionModel(BaseModel):
         return cls(name_uz=name_uz, name_ru=name_ru, name_eng=name_eng)
 
 
+def _serialize_collection(collection: Collection) -> dict:
+    return {
+        "id": collection.id,
+        "name_uz": collection.name_uz,
+        "name_ru": collection.name_ru,
+        "name_eng": collection.name_eng,
+    }
+
+
 @collections_router.get(path='', name="Collections", summary="Kolleksiyalar ro'yxati")
 async def list_collection():
-    return await Collection.all()
+    collections = await Collection.all()
+    return [_serialize_collection(collection) for collection in collections]
 
 @collections_router.get(path='/{collection_id}', name="Collections Get One", summary="Bitta kolleksiyani olish")
 async def collection_get_one(collection_id: int):
     collection = await Collection.get_or_none(collection_id)
     if not collection:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found")
-    return collection
+    return _serialize_collection(collection)
 
 @collections_router.post(path="", name="Create Collections", summary="Kolleksiya yaratish (admin)")
 async def create_collection(
@@ -60,7 +70,7 @@ async def create_collection(
         collection = await Collection.create(**payload.model_dump(exclude_none=True))
     except DBAPIError:
         return Response("Color yaratishda xatolik", status_code=status.HTTP_404_NOT_FOUND)
-    return {"ok": True, "data": collection}
+    return {"ok": True, "data": _serialize_collection(collection)}
 
 
 # # Update Collection
@@ -80,7 +90,7 @@ async def list_collection(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
 
     await collection.update_from_dict(data).save()
-    return {"ok": True, "data": collection}
+    return {"ok": True, "data": _serialize_collection(collection)}
 
 
 @collections_router.delete(path='/{collection_id}', name="Delete Collections", summary="Kolleksiyani o'chirish (admin)")
