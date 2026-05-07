@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Warehouse from './pages/Warehouse';
+import Products from './pages/Products';
 import Layout from './components/Layout';
 import './App.css';
 
@@ -40,6 +41,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Warehouse />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/products"
+            element={
+              <PrivateRoute>
+                <Products />
               </PrivateRoute>
             }
           />
