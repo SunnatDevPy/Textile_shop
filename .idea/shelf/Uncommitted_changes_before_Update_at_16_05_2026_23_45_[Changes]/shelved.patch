@@ -1,0 +1,69 @@
+Index: .env.example
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>ADMIN=5649321700\r\n\r\nDB_NAME=textile\r\nDB_HOST=localhost\r\nDB_PORT=5431\r\nDB_PASS=1\r\nDB_USER=postgres\r\nDB_POOL_SIZE=20\r\nDB_MAX_OVERFLOW=30\r\nDB_POOL_TIMEOUT=60\r\nDB_POOL_RECYCLE=1800\r\n\r\nADMIN_USERNAME=superadmin\r\nADMIN                                               _PASS=<bcrypt_hash_here>\r\nSECRET_KEY=<random_secret_key>\r\n\r\n# Payment callbacks\r\nCLICK_SECRET_KEY=\r\nCLICK_MERCHANT_ID=\r\nCLICK_SERVICE_ID=\r\nCLICK_MERCHANT_USER_ID=\r\nPAYME_MERCHANT_ID=\r\nPAYME_SECRET_KEY=\r\nPAYME_ENDPOINT=https://checkout.paycom.uz\r\nPAYMENT_CALLBACK_IP_WHITELIST=\r\nRATE_LIMIT_PER_MINUTE=120\r\n\r\n# SMTP (order status email)\r\nSMTP_ENABLED=false\r\nSMTP_HOST=smtp.gmail.com\r\nSMTP_PORT=465\r\nSMTP_USER=\r\nSMTP_PASSWORD=\r\nSMTP_FROM_EMAIL=\r\n\r\n# Telegram bot\r\nTG_BOT_TOKEN=\r\n# Bir nechta group/chat id bo'lsa vergul bilan yozing\r\nTG_GROUP_IDS=\r\n# Agar webhook ishlatsangiz:\r\nTG_WEBHOOK_URL=\r\nTG_WEBHOOK_SECRET=\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.env.example b/.env.example
+--- a/.env.example	(revision f2f7fb64418f0a5599499ecd8494e06007d2a4ae)
++++ b/.env.example	(date 1778957084739)
+@@ -11,7 +11,7 @@
+ DB_POOL_RECYCLE=1800
+ 
+ ADMIN_USERNAME=superadmin
+-ADMIN                                               _PASS=<bcrypt_hash_here>
++ADMIN_PASS=<bcrypt_hash_here>
+ SECRET_KEY=<random_secret_key>
+ 
+ # Payment callbacks
+@@ -21,7 +21,10 @@
+ CLICK_MERCHANT_USER_ID=
+ PAYME_MERCHANT_ID=
+ PAYME_SECRET_KEY=
+-PAYME_ENDPOINT=https://checkout.paycom.uz
++# Test (sandbox) kalitlar uchun: https://checkout.test.paycom.uz
++PAYME_ENDPOINT=https://checkout.test.paycom.uz
++# Do'kon sayti (Payme qaytish URL): https://sizning-domen.uz
++PUBLIC_BASE_URL=
+ PAYMENT_CALLBACK_IP_WHITELIST=
+ RATE_LIMIT_PER_MINUTE=120
+ 
+Index: .env
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>\r\nBOT_TOKEN=\"\"\r\n\r\nADMIN=5649321700\r\n\r\nDB_NAME=hh_uz\r\nDB_HOST=localhost\r\nDB_PORT=5431\r\nDB_PASS=1\r\nDB_USER=postgres\r\nADMIN_PASS=$2b$12$Ov1GHF6HcZs8aETAjlPJC.XHLqw4DcEtV1ptQT6fjGiORzRxDlga2\r\nADMIN_USERNAME=SunnatDevPy\r\nSECRET_KEY=12321wadasdad\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.env b/.env
+--- a/.env	(revision f2f7fb64418f0a5599499ecd8494e06007d2a4ae)
++++ b/.env	(date 1778957097625)
+@@ -3,11 +3,24 @@
+ 
+ ADMIN=5649321700
+ 
+-DB_NAME=hh_uz
+-DB_HOST=localhost
+-DB_PORT=5431
++DB_NAME=textile
++DB_HOST=db
++DB_PORT=5432
+ DB_PASS=1
+ DB_USER=postgres
+ ADMIN_PASS=$2b$12$Ov1GHF6HcZs8aETAjlPJC.XHLqw4DcEtV1ptQT6fjGiORzRxDlga2
+ ADMIN_USERNAME=SunnatDevPy
+ SECRET_KEY=12321wadasdad
++
++
++# Payment callbacks
++CLICK_SECRET_KEY=
++CLICK_MERCHANT_ID=
++CLICK_SERVICE_ID=
++CLICK_MERCHANT_USER_ID=
++PAYME_MERCHANT_ID=6a0324598563616f9b296dad
++PAYME_SECRET_KEY=@zmMMFPIIRP&HpV3AadjDgNkYwNfqXT6Rszc
++PAYME_ENDPOINT=https://checkout.test.paycom.uz
++PUBLIC_BASE_URL=http://localhost:8000
++PAYMENT_CALLBACK_IP_WHITELIST=
++RATE_LIMIT_PER_MINUTE=120
