@@ -14,6 +14,7 @@ from starlette import status
 from config import conf
 from models import Order, PaymentReceipt
 from models.database import db
+from utils.payment_links import get_order_amount_tiyin
 from utils.response import ok_response
 
 payme_router = APIRouter(prefix='/payme', tags=['Payme'])
@@ -166,11 +167,12 @@ async def check_perform_transaction(params: dict):
             detail=f"Order status is not NEW: {order.status}"
         )
 
-    # Summani tekshirish (order_items orqali hisoblash kerak)
-    order_items = await db.execute(
-        select(Order).where(Order.id == order_id)
-    )
-    # Bu yerda order_items yig'indisini hisoblash kerak
+    expected_amount = await get_order_amount_tiyin(int(order_id))
+    if amount != expected_amount:
+        raise HTTPException(
+            status_code=PaymeError.INVALID_AMOUNT,
+            detail=f"Amount mismatch: expected {expected_amount}, got {amount}",
+        )
 
     if amount < PAYME_MIN_AMOUNT:
         raise HTTPException(

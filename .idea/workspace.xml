@@ -5,37 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="774920ee-63fe-49ac-b413-a3f7c8d0cf31" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.env" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/fast_routers/collection.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/fast_routers/color.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/fast_routers/size.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/admin_users.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/admin_users.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/bot_users.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/bot_users.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/call_orders.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/cart.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/contacts.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/excel_save.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/excel_save.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/geopy_project.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/jwt_.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/jwt_.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/love_products.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/main_photos.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/main_photos.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/orders.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/orders.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/shop.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/shop_category.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/category.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/shop_products.py" beforeDir="false" afterPath="$PROJECT_DIR$/fast_routers/products.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/fast_routers/work_times.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/database.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/products_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/products_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/shop_model.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/shop_model.test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/users.py" beforeDir="false" afterPath="$PROJECT_DIR$/models/users.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/base_models_pydantic.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/base_models_pydantic.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,7 +15,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="45" />
+    <option name="cachedIndexableFilesCount" value="128" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -65,7 +37,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/SunnatDevPy/Textile_shop.git&quot;,
-    &quot;accountId&quot;: &quot;8f10b937-3eae-4d43-b72b-233a631f0f52&quot;
+    &quot;accountId&quot;: &quot;df376ff0-a3d9-4674-9a26-1661b55a6dfa&quot;
   }
 }</component>
   <component name="McpProjectServerCommands">
@@ -83,6 +55,7 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;FastAPI.Textile_shop.executor&quot;: &quot;Run&quot;,
     &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
@@ -91,6 +64,7 @@
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
     &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
     &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;master&quot;,
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;C:/Users/stalk/FastAPIProject/Textile_shop/fast_routers&quot;,
@@ -100,7 +74,13 @@
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.AcpAgentsConfigurable&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;D:\\PyCharm 2026.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  },
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;postgresql&quot;
+    ]
   }
 }</component>
   <component name="RecentsManager">
@@ -121,6 +101,7 @@
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="RUN_TOOL" value="" />
       <option name="launchJavascriptDebuger" value="false" />
@@ -130,8 +111,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-PY-253.31033.139" />
-        <option value="bundled-python-sdk-2653e85de345-6d6dccd035ac-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.31033.139" />
+        <option value="bundled-js-predefined-d6986cc7102b-3bd3a6803838-JavaScript-PY-261.22158.340" />
+        <option value="bundled-python-sdk-b63d5a1f7c97-b61e75351b1f-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.22158.340" />
       </set>
     </attachedChunks>
   </component>
@@ -149,10 +130,26 @@
       <workItem from="1775022637030" duration="4409000" />
       <workItem from="1775027543399" duration="4203000" />
       <workItem from="1775284261440" duration="5998000" />
+      <workItem from="1777376000587" duration="659000" />
+      <workItem from="1777377795371" duration="99000" />
+      <workItem from="1777379264651" duration="8480000" />
+      <workItem from="1777393843866" duration="697000" />
+      <workItem from="1777639917838" duration="6426000" />
+      <workItem from="1777650779393" duration="607000" />
+      <workItem from="1777893466370" duration="6710000" />
+      <workItem from="1778001371200" duration="2554000" />
+      <workItem from="1778163444774" duration="33000" />
+      <workItem from="1778319740589" duration="1377000" />
+      <workItem from="1778591197953" duration="181000" />
+      <workItem from="1778740770881" duration="13000" />
+      <workItem from="1778761567089" duration="7000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/Textile_shop$Textile_shop.coverage" NAME="Textile_shop Coverage Results" MODIFIED="1777383424655" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>

@@ -11,6 +11,7 @@ from sqlalchemy import and_, desc, func, select, update
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
+from config import conf
 from fast_routers.admin_auth import verify_admin_credentials
 from models import AdminUser, Order, OrderItem, Product, ProductItems
 from models.database import db
@@ -18,6 +19,7 @@ from utils.audit import write_audit_log
 from utils.notifications import send_order_status_email
 from utils.response import ok_response
 from utils.security import enforce_rate_limit
+from utils.payment_links import build_payme_checkout_url, get_order_amount_tiyin
 from utils.telegram_bot import send_new_order_notification, send_order_status_notification, send_low_stock_notification
 
 order_router = APIRouter(prefix='/order', tags=['Orders'])
@@ -445,13 +447,36 @@ async def create_order(request: Request, payload: CreateOrderPayload):
         items_count=len(order_items),
     )
 
-    return ok_response(
-        {
-            'order_id': order.id,
-            'status': _status_value(order.status),
-            'order_items': order_items,
-        }
-    )
+    response_data = {
+        'order_id': order.id,
+        'status': _status_value(order.status),
+        'payment': pay,
+        'order_items': order_items,
+        'total_sum': total_sum,
+    }
+
+    if payment_enum == Order.Payment.PAYME:
+        if not (conf.PAYME_MERCHANT_ID and conf.PAYME_SECRET_KEY):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Payme sozlamalari (.env) to'ldirilmagan",
+            )
+        amount_tiyin = await get_order_amount_tiyin(order.id)
+        if amount_tiyin < 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Buyurtma summasi Payme uchun juda kichik (min 1 so'm)",
+            )
+        try:
+            response_data['payment_url'] = build_payme_checkout_url(order.id, amount_tiyin)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
+        response_data['amount_tiyin'] = amount_tiyin
+
+    return ok_response(response_data)
 
 
 @order_router.post('/{order_id}/confirm-payment', name='Confirm payment: status + stock', summary="To'lovni tasdiqlash va stockni kamaytirish (operator/admin)")

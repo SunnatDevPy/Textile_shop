@@ -1,0 +1,23 @@
+2026-05-05 17:44:04 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:07 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:11 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:15 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:19 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:23 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:30 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:34 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:37 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:40 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:44 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:48 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:44:53 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:45:24 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:45:25 | INFO     | Database migrations completed
+2026-05-05 17:45:25 | INFO     | Creating database indexes...
+2026-05-05 17:45:25 | INFO     | Database indexes created successfully
+2026-05-05 17:45:41 | INFO     | HTTP Request | method=GET | path=/system/health | status=200 | duration_ms=1.28
+2026-05-05 17:52:08 | INFO     | Shutting down Textile Shop API
+2026-05-05 17:52:12 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-05 17:52:12 | INFO     | Database migrations completed
+2026-05-05 17:52:12 | INFO     | Creating database indexes...
+2026-05-05 17:52:12 | INFO     | Database indexes created successfully
