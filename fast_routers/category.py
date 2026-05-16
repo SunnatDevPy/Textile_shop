@@ -38,18 +38,28 @@ class UpdateOrCreateCategoryModel(BaseModel):
         return cls(name_uz=name_uz, name_ru=name_ru, name_eng=name_eng)
 
 
+def _serialize_category(category: Category) -> dict:
+    return {
+        "id": category.id,
+        "name_uz": category.name_uz,
+        "name_ru": category.name_ru,
+        "name_eng": category.name_eng,
+    }
+
+
 @categories_router.get(path='', name="Categories", summary="Kategoriyalar ro'yxati")
 @cached(ttl=600, key_prefix="categories")
 async def list_category():
     """Kategoriyalar ro'yxati (10 daqiqa cache)."""
-    return await Category.all()
+    categories = await Category.all()
+    return [_serialize_category(category) for category in categories]
 
 @categories_router.get(path='/{category_id}', name="Categories Get One", summary="Bitta kategoriyani olish")
 async def category_get_one(category_id: int):
     category = await Category.get_or_none(category_id)
     if not category:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
-    return category
+    return _serialize_category(category)
 
 @categories_router.post(path="", name="Create Category", summary="Kategoriya yaratish (admin)")
 async def create_category(
@@ -62,7 +72,7 @@ async def create_category(
         cache.invalidate_pattern("categories")
     except DBAPIError:
         return Response("Category yaratishda xatolik", status_code=status.HTTP_404_NOT_FOUND)
-    return {"ok": True, "data": category}
+    return {"ok": True, "data": _serialize_category(category)}
 
 
 # # Update Category
@@ -84,7 +94,7 @@ async def list_category_shop(
     await category.update_from_dict(data).save()
     # Invalidate cache after updating
     cache.invalidate_pattern("categories")
-    return {"ok": True, "data": category}
+    return {"ok": True, "data": _serialize_category(category)}
 
 
 @categories_router.delete(path='/{category_id}', name="Delete Category", summary="Kategoriyani o'chirish (admin)")

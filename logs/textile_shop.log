@@ -1,23 +1,80 @@
-2026-05-05 17:44:04 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:07 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:11 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:15 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:19 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:23 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:30 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:34 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:37 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:40 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:44 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:48 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:44:53 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:45:24 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:45:25 | INFO     | Database migrations completed
-2026-05-05 17:45:25 | INFO     | Creating database indexes...
-2026-05-05 17:45:25 | INFO     | Database indexes created successfully
-2026-05-05 17:45:41 | INFO     | HTTP Request | method=GET | path=/system/health | status=200 | duration_ms=1.28
-2026-05-05 17:52:08 | INFO     | Shutting down Textile Shop API
-2026-05-05 17:52:12 | INFO     | Starting Textile Shop API | version=1.0.0
-2026-05-05 17:52:12 | INFO     | Database migrations completed
-2026-05-05 17:52:12 | INFO     | Creating database indexes...
-2026-05-05 17:52:12 | INFO     | Database indexes created successfully
+2026-05-06 00:52:18 | INFO     | Starting fake data generation...
+2026-05-06 00:52:22 | ERROR    | Error generating fake data: [WinError 1225] Удаленный компьютер отклонил это сетевое подключение
+2026-05-06 01:00:15 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-06 01:00:16 | INFO     | Database migrations completed
+2026-05-06 01:00:16 | INFO     | Creating database indexes...
+2026-05-06 01:00:16 | INFO     | Database indexes created successfully
+2026-05-06 01:01:22 | INFO     | HTTP Request | method=GET | path=/ | status=405 | duration_ms=1.39
+2026-05-06 01:01:23 | INFO     | HTTP Request | method=GET | path=/favicon.ico | status=405 | duration_ms=1.71
+2026-05-06 01:01:26 | INFO     | HTTP Request | method=GET | path=/docs | status=200 | duration_ms=1.86
+2026-05-06 01:01:28 | INFO     | HTTP Request | method=GET | path=/openapi.json | status=200 | duration_ms=394.39
+2026-05-06 01:13:56 | INFO     | HTTP Request | method=GET | path=/docs | status=200 | duration_ms=0.75
+2026-05-06 01:14:02 | INFO     | HTTP Request | method=GET | path=/openapi.json | status=200 | duration_ms=2.81
+2026-05-06 01:16:37 | INFO     | Shutting down Textile Shop API
+2026-05-06 01:16:47 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-06 01:16:48 | INFO     | Database migrations completed
+2026-05-06 01:16:48 | INFO     | Creating database indexes...
+2026-05-06 01:16:48 | INFO     | Database indexes created successfully
+2026-05-06 01:21:12 | INFO     | Shutting down Textile Shop API
+2026-05-06 01:57:40 | INFO     | Starting fake data generation...
+2026-05-06 01:57:40 | INFO     | ✅ Created 5 categories
+2026-05-06 01:57:40 | INFO     | ✅ Created 5 collections
+2026-05-06 01:57:40 | INFO     | ✅ Created 10 colors
+2026-05-06 01:57:40 | INFO     | ✅ Created 7 sizes
+2026-05-06 01:57:40 | INFO     | ✅ Created 50 products
+2026-05-06 01:57:40 | INFO     | ✅ Created 263 product items
+2026-05-06 01:57:41 | INFO     | ✅ Created 200 orders
+2026-05-06 01:57:41 | INFO     | ✅ Created 587 order items
+2026-05-06 01:57:41 | INFO     | ============================================================
+2026-05-06 01:57:41 | INFO     | ✅ Fake data generation completed successfully!
+2026-05-06 01:57:41 | INFO     | ============================================================
+2026-05-06 01:57:41 | INFO     | Categories: 5
+2026-05-06 01:57:41 | INFO     | Collections: 5
+2026-05-06 01:57:41 | INFO     | Colors: 10
+2026-05-06 01:57:41 | INFO     | Sizes: 7
+2026-05-06 01:57:41 | INFO     | Products: 50
+2026-05-06 01:57:41 | INFO     | Product Items: 263
+2026-05-06 01:57:41 | INFO     | Orders: 200
+2026-05-06 01:57:41 | INFO     | Order Items: 587
+2026-05-06 01:57:41 | INFO     | ============================================================
+2026-05-06 01:59:23 | INFO     | Creating admin user...
+2026-05-06 01:59:23 | INFO     | ============================================================
+2026-05-06 01:59:23 | INFO     | Admin user created successfully!
+2026-05-06 01:59:23 | INFO     | ============================================================
+2026-05-06 01:59:23 | INFO     | Username: SunnatDevPy
+2026-05-06 01:59:23 | INFO     | ID: 1
+2026-05-06 01:59:23 | INFO     | Status: StatusUser.ADMIN
+2026-05-06 01:59:23 | INFO     | Active: True
+2026-05-06 01:59:23 | INFO     | ============================================================
+2026-05-06 11:33:19 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-06 11:33:19 | INFO     | Database migrations completed
+2026-05-06 11:33:19 | INFO     | Creating database indexes...
+2026-05-06 11:33:19 | INFO     | Database indexes created successfully
+2026-05-06 11:33:22 | INFO     | HTTP Request | method=GET | path=/api/system/health | status=404 | duration_ms=6.02
+2026-05-06 11:33:34 | INFO     | HTTP Request | method=GET | path=/api/products | status=404 | duration_ms=3.70
+2026-05-06 11:33:35 | INFO     | HTTP Request | method=GET | path=/api/admin-users/me | status=404 | duration_ms=3.60
+2026-05-06 11:34:28 | INFO     | HTTP Request | method=GET | path=/api/products | status=404 | duration_ms=3.39
+2026-05-06 11:34:29 | INFO     | HTTP Request | method=GET | path=/api/admin-users/me | status=404 | duration_ms=4.18
+2026-05-06 11:34:43 | INFO     | HTTP Request | method=GET | path=/api/docs | status=200 | duration_ms=1.27
+2026-05-06 11:35:15 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-06 11:35:15 | INFO     | Database migrations completed
+2026-05-06 11:35:15 | INFO     | Creating database indexes...
+2026-05-06 11:35:15 | INFO     | Database indexes created successfully
+2026-05-06 11:35:24 | INFO     | HTTP Request | method=GET | path=/api/admin-users/me | status=404 | duration_ms=4.07
+2026-05-06 11:35:25 | INFO     | HTTP Request | method=GET | path=/api/products | status=404 | duration_ms=5.31
+2026-05-06 11:35:41 | INFO     | HTTP Request | method=GET | path=/ | status=200 | duration_ms=64.24
+2026-05-06 11:36:45 | INFO     | HTTP Request | method=GET | path=/api/products | status=404 | duration_ms=2.95
+2026-05-06 11:36:45 | INFO     | HTTP Request | method=GET | path=/api/admin-users/me | status=404 | duration_ms=4.80
+2026-05-06 11:37:35 | INFO     | HTTP Request | method=GET | path=/api/products | status=404 | duration_ms=3.72
+2026-05-06 11:37:36 | INFO     | HTTP Request | method=GET | path=/api/admin-users/me | status=404 | duration_ms=3.65
+2026-05-06 11:38:22 | INFO     | HTTP Request | method=GET | path=/api/products | status=404 | duration_ms=3.12
+2026-05-06 11:38:53 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-06 11:38:53 | INFO     | Database migrations completed
+2026-05-06 11:38:53 | INFO     | Creating database indexes...
+2026-05-06 11:38:53 | INFO     | Database indexes created successfully
+2026-05-06 11:38:58 | INFO     | HTTP Request | method=GET | path=/api/products | status=200 | duration_ms=91.16
+2026-05-06 11:38:58 | INFO     | HTTP Request | method=GET | path=/api/admin-users/me | status=405 | duration_ms=0.95
+2026-05-06 11:39:18 | INFO     | HTTP Request | method=GET | path=/api/admin-users | status=405 | duration_ms=0.82
+2026-05-06 11:39:38 | INFO     | HTTP Request | method=GET | path=/api/panel/me | status=200 | duration_ms=363.88
+2026-05-06 11:39:39 | INFO     | HTTP Request | method=GET | path=/api/docs | status=200 | duration_ms=0.60
+2026-05-06 11:40:02 | INFO     | HTTP Request | method=POST | path=/api/categories | status=200 | duration_ms=398.06

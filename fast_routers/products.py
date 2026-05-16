@@ -104,9 +104,8 @@ async def search_products_advanced(
     - sort_dir: asc, desc
     """
     from models import ProductItems
-    from sqlalchemy.orm import joinedload
 
-    query = select(Product).options(joinedload(Product.product_items))
+    query = select(Product)
     criteria = []
 
     if search:
@@ -159,8 +158,26 @@ async def search_products_advanced(
 
     query = query.limit(max(1, min(limit, 500)))
     products = (await db.execute(query)).scalars().unique().all()
+    safe_products = [
+        {
+            "id": p.id,
+            "category_id": p.category_id,
+            "collection_id": p.collection_id,
+            "name_uz": p.name_uz,
+            "name_ru": p.name_ru,
+            "name_eng": p.name_eng,
+            "description_uz": p.description_uz,
+            "description_ru": p.description_ru,
+            "description_eng": p.description_eng,
+            "price": p.price,
+            "is_active": p.is_active,
+            "clothing_type": p.clothing_type,
+            "created_at": getattr(p, "created_at", None),
+        }
+        for p in products
+    ]
 
-    return ok_response(products, meta={"count": len(products), "sort_by": sort_by, "sort_dir": sort_dir})
+    return ok_response(safe_products, meta={"count": len(safe_products), "sort_by": sort_by, "sort_dir": sort_dir})
 
 
 @shop_product_router.get('/category/{category_id}', name='Products by category', summary="Kategoriya bo'yicha mahsulotlar")
@@ -346,7 +363,7 @@ async def create_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Collection topilmadi')
     if photo is not None:
         _require_image_upload(photo)
-    allowed_clothing_types = {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value}
+    allowed_clothing_types = {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value, Product.ClothingType.UNISEX.value}
     if clothing_type not in allowed_clothing_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -416,7 +433,7 @@ async def update_product(
     if photo is not None:
         _require_image_upload(photo)
     if clothing_type is not None:
-        allowed_clothing_types = {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value}
+        allowed_clothing_types = {Product.ClothingType.MEN.value, Product.ClothingType.WOMEN.value, Product.ClothingType.UNISEX.value}
         if clothing_type not in allowed_clothing_types:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
