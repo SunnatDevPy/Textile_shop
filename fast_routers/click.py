@@ -74,6 +74,16 @@ async def click_prepare(request: ClickPrepareRequest):
     """
     Click prepare endpoint - to'lovni tayyorlash
     """
+    
+    # Click sozlamalarini tekshirish
+    if not CLICK_SECRET_KEY:
+        return {
+            "click_trans_id": request.click_trans_id,
+            "merchant_trans_id": request.merchant_trans_id,
+            "merchant_prepare_id": 0,
+            "error": -1,
+            "error_note": "Click SECRET_KEY sozlanmagan"
+        }
 
     # Signatureni tekshirish
     is_valid = verify_click_signature(
@@ -201,6 +211,16 @@ async def click_complete(request: ClickCompleteRequest):
     """
     Click complete endpoint - to'lovni yakunlash
     """
+    
+    # Click sozlamalarini tekshirish
+    if not CLICK_SECRET_KEY:
+        return {
+            "click_trans_id": request.click_trans_id,
+            "merchant_trans_id": request.merchant_trans_id,
+            "merchant_confirm_id": 0,
+            "error": -1,
+            "error_note": "Click SECRET_KEY sozlanmagan"
+        }
 
     # Signatureni tekshirish
     is_valid = verify_click_signature(

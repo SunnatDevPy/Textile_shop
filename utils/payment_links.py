@@ -21,6 +21,9 @@ def build_payme_checkout_url(order_id: int, amount_tiyin: int, return_url: Optio
     merchant_id = (conf.PAYME_MERCHANT_ID or "").strip()
     if not merchant_id:
         raise ValueError("PAYME_MERCHANT_ID sozlanmagan")
+    
+    if not conf.PAYME_SECRET_KEY:
+        raise ValueError("PAYME_SECRET_KEY sozlanmagan")
 
     params = {
         "m": merchant_id,
@@ -33,7 +36,9 @@ def build_payme_checkout_url(order_id: int, amount_tiyin: int, return_url: Optio
 
     params_str = ";".join(f"{k}={v}" for k, v in params.items())
     encoded_params = base64.b64encode(params_str.encode()).decode()
-    endpoint = (conf.PAYME_ENDPOINT or "https://checkout.paycom.uz").rstrip("/")
+    
+    # PAYME_ENDPOINT default qiymati test muhit uchun
+    endpoint = (conf.PAYME_ENDPOINT or "https://checkout.test.paycom.uz").rstrip("/")
     return f"{endpoint}/{encoded_params}"
 
 

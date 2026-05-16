@@ -13,7 +13,14 @@ from utils.response import ok_response
 from utils.security import enforce_ip_whitelist, enforce_rate_limit, verify_hmac_signature
 from utils.telegram_bot import send_order_status_notification
 
-payments_router = APIRouter(prefix="/payments", tags=["Payments"])
+# DEPRECATED: Bu endpointlar asosiy /api/payme va /api/click/* bilan takrorlangan.
+# Faqat maxsus integratsiya uchun qoldirilgan. Rasmiy Payme/Click webhook uchun
+# /api/payme va /api/click/prepare|complete ishlatilsin.
+payments_router = APIRouter(
+    prefix="/payments",
+    tags=["Payments (Alternative/Deprecated)"],
+    deprecated=True
+)
 
 
 def _status_value(s) -> Optional[str]:
@@ -110,12 +117,16 @@ class PaymePerformPayload(BaseModel):
     success: bool = True
 
 
-@payments_router.post("/click/prepare", summary="Click: buyurtmani to'lovga tayyorligini tekshirish")
+@payments_router.post("/click/prepare", summary="[DEPRECATED] Click: buyurtmani to'lovga tayyorligini tekshirish")
 async def click_prepare(
     request: Request,
     payload: ClickPreparePayload,
     x_signature: str = Header(default="", alias="X-Signature"),
 ):
+    """
+    DEPRECATED: Rasmiy Click integration uchun /api/click/prepare ishlatilsin.
+    Bu endpoint faqat maxsus REST integratsiya uchun qoldirilgan.
+    """
     enforce_rate_limit(request, scope="payments")
     enforce_ip_whitelist(request)
     if conf.CLICK_SECRET_KEY:
@@ -130,12 +141,16 @@ async def click_prepare(
     return ok_response({"order_id": order.id, "status": _status_value(order.status)})
 
 
-@payments_router.post("/click/complete", summary="Click: to'lovni yakunlash va orderni paid qilish")
+@payments_router.post("/click/complete", summary="[DEPRECATED] Click: to'lovni yakunlash va orderni paid qilish")
 async def click_complete(
     request: Request,
     payload: ClickCompletePayload,
     x_signature: str = Header(default="", alias="X-Signature"),
 ):
+    """
+    DEPRECATED: Rasmiy Click integration uchun /api/click/complete ishlatilsin.
+    Bu endpoint faqat maxsus REST integratsiya uchun qoldirilgan.
+    """
     enforce_rate_limit(request, scope="payments")
     enforce_ip_whitelist(request)
     if conf.CLICK_SECRET_KEY:
@@ -160,12 +175,16 @@ async def click_complete(
     return ok_response(result)
 
 
-@payments_router.post("/payme/check", summary="Payme: buyurtmani tekshirish")
+@payments_router.post("/payme/check", summary="[DEPRECATED] Payme: buyurtmani tekshirish")
 async def payme_check(
     request: Request,
     payload: PaymeCheckPayload,
     x_signature: str = Header(default="", alias="X-Signature"),
 ):
+    """
+    DEPRECATED: Rasmiy Payme integration uchun /api/payme (JSON-RPC) ishlatilsin.
+    Bu endpoint faqat maxsus REST integratsiya uchun qoldirilgan.
+    """
     enforce_rate_limit(request, scope="payments")
     enforce_ip_whitelist(request)
     if conf.PAYME_SECRET_KEY:
@@ -180,12 +199,16 @@ async def payme_check(
     return ok_response({"order_id": order.id, "status": _status_value(order.status)})
 
 
-@payments_router.post("/payme/perform", summary="Payme: to'lovni yakunlash va orderni paid qilish")
+@payments_router.post("/payme/perform", summary="[DEPRECATED] Payme: to'lovni yakunlash va orderni paid qilish")
 async def payme_perform(
     request: Request,
     payload: PaymePerformPayload,
     x_signature: str = Header(default="", alias="X-Signature"),
 ):
+    """
+    DEPRECATED: Rasmiy Payme integration uchun /api/payme (JSON-RPC) ishlatilsin.
+    Bu endpoint faqat maxsus REST integratsiya uchun qoldirilgan.
+    """
     enforce_rate_limit(request, scope="payments")
     enforce_ip_whitelist(request)
     if conf.PAYME_SECRET_KEY:

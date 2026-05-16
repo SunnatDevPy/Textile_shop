@@ -28,9 +28,9 @@ class PaymentUrlResponse(BaseModel):
 
 def _click_return_url(order_id: int) -> str:
     base = (conf.PUBLIC_BASE_URL or "").strip().rstrip("/")
-    if base:
-        return f"{base}/order/{order_id}/success"
-    return f"https://example.com/order/{order_id}/success"
+    if not base:
+        raise ValueError("PUBLIC_BASE_URL sozlanmagan - to'lov natijasiga qaytish uchun kerak")
+    return f"{base}/order/{order_id}/success"
 
 
 @payment_url_router.get('/{order_id}/payme', name='Get Payme payment URL')
@@ -96,8 +96,21 @@ async def get_click_url(order_id: int) -> PaymentUrlResponse:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Buyurtma summasi juda kichik'
         )
+    
+    if not CLICK_SERVICE_ID or not CLICK_MERCHANT_ID:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='Click sozlamalari (.env) to\'ldirilmagan'
+        )
 
-    return_url = _click_return_url(order_id)
+    try:
+        return_url = _click_return_url(order_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
     payment_url = (
         f"https://my.click.uz/services/pay"
         f"?service_id={CLICK_SERVICE_ID}"
