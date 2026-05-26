@@ -1,11 +1,50 @@
-# Test your FastAPI endpoints
+# Textile Shop — API testlar
+# Payme kabinetiga endpoint: https://<DOMENINGIZ>/api/payme  (api prefiksi shart)
 
-GET http://127.0.0.1:8000/
+@baseUrl = http://127.0.0.1:8000
+
+### Sog'liq
+GET {{baseUrl}}/api/system/health
 Accept: application/json
 
 ###
 
-GET http://127.0.0.1:8000/hello/User
-Accept: application/json
+### Payme Merchant API (JSON-RPC) — kabinet va sandbox shu URL ga urinadi
+# Authorization: Basic base64(MERCHANT_ID:PAYME_SECRET_KEY)
+# Masalan: echo -n "your_merchant_id:your_secret" | base64
+POST {{baseUrl}}/api/payme
+Authorization: Basic REPLACE_WITH_BASE64_MERCHANT_ID_COLON_SECRET
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "CheckPerformTransaction",
+  "params": {
+    "amount": 50000,
+    "account": {
+      "order_id": 1
+    }
+  }
+}
+
+###
+
+### Payme — oxirida slash bo'lsa ham (301 bo'lmasin)
+POST {{baseUrl}}/api/payme/
+Authorization: Basic REPLACE_WITH_BASE64_MERCHANT_ID_COLON_SECRET
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "CheckPerformTransaction",
+  "params": {
+    "amount": 50000,
+    "account": {
+      "order_id": 1
+    }
+  }
+}
 
 ###
