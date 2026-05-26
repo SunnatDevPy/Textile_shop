@@ -59,27 +59,54 @@ def verify_payme_auth(authorization: Optional[str]) -> bool:
             return False
 
         decoded = base64.b64decode(credentials.strip()).decode('utf-8')
-        # Parolda ':' bo'lmasligi kerak Paycom dizaynida; yana ehtiyot: birinchi ':' dan keyingi hammasi kalit
-        username, password = decoded.split(':', 1)
+        parts = [p.strip() for p in decoded.split(':')]
+        if not parts or len(parts) < 2:
+            return False
 
-        username = username.strip()
-        password = password.strip()
+        username = parts[0].strip()
+
         merchant_id = (PAYME_MERCHANT_ID or '').strip()
-
         secret = PAYME_SECRET_KEY.strip()
 
-        # Paycom Merchant API template: Authorization = Base64("Paycom:SECRET_KEY")
+        def _normalize_candidates(rest: str) -> list[str]:
+            """Sandbox ba'zan Paycom:Uzcard:LICENCE_KEY kabili yuboradi — bir necha variant bilan solishtiramiz."""
+            cand: list[str] = []
+            r = rest.strip()
+            if r:
+                cand.append(r)
+                if ':' in r:
+                    segs = [s.strip() for s in r.split(':') if s.strip()]
+                    if segs:
+                        cand.append(segs[-1])
+                    if len(segs) >= 2:
+                        cand.append(':'.join(segs[1:]))
+            out: list[str] = []
+            seen: set[str] = set()
+            for c in cand:
+                if c and c not in seen:
+                    seen.add(c)
+                    out.append(c)
+            return out
+
+        # Paycom Merchant API: Authorization = Base64("Paycom:SECRET_KEY") yoki Paycom:guruh:key
         if username.lower() == 'paycom':
-            try:
-                return secrets.compare_digest(password, secret)
-            except ValueError:
-                return False
+            rest_joined = ":".join(parts[1:])
+            for pwd in _normalize_candidates(rest_joined):
+                try:
+                    if secrets.compare_digest(pwd, secret):
+                        return True
+                except ValueError:
+                    continue
+            return False
 
         if merchant_id and username == merchant_id:
-            try:
-                return secrets.compare_digest(password, secret)
-            except ValueError:
-                return False
+            rest_joined = ":".join(parts[1:])
+            for pwd in _normalize_candidates(rest_joined):
+                try:
+                    if secrets.compare_digest(pwd, secret):
+                        return True
+                except ValueError:
+                    continue
 
         return False
     except Exception:
