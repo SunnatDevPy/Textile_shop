@@ -72,6 +72,19 @@ def _payme_account_reject_extra_keys_default() -> bool:
     return 'test.paycom' in endpoint
 
 
+def _payme_checkperform_busy_default() -> bool:
+    """Sandbox: boshqa Payme trx yaratilgan hisob uchun CheckPerform rad (-31088).
+
+    Prod: klientlar CheckPerform ni takrorlay olishi mumkin — odatda o'chiq.
+    PAYME_CHECKPERFORM_BUSY_ACCOUNT bo'sh/unset va test.paycom endpoint → yoqiladi.
+    """
+    raw = os.getenv('PAYME_CHECKPERFORM_BUSY_ACCOUNT')
+    if raw is not None and str(raw).strip() != '':
+        return str(raw).strip().lower() in {'1', 'true', 'yes', 'on'}
+    endpoint = os.getenv('PAYME_ENDPOINT', 'https://checkout.paycom.uz').lower()
+    return 'test.paycom' in endpoint
+
+
 @dataclass
 class Configuration:
     """All in one configuration's class"""
@@ -88,6 +101,7 @@ class Configuration:
     PAYME_ENDPOINT: str = os.getenv('PAYME_ENDPOINT', 'https://checkout.paycom.uz')
     PAYME_RELAX_AMOUNT_UNITS: bool = _payme_relax_amount_units_default()
     PAYME_ACCOUNT_REJECT_EXTRA_KEYS: bool = _payme_account_reject_extra_keys_default()
+    PAYME_CHECKPERFORM_BUSY_ACCOUNT: bool = _payme_checkperform_busy_default()
     # Bo'sh — barcha buyurtma id lari Payme uchun ruxsat (prod). Sandbox: "noto'g'ri akkaunt"
     # testlari uchun CSV, masalan "5" (faqat order_id shu ro'yxatda bo'lsa ishlaydi).
     PAYME_ALLOW_ORDER_IDS: str = os.getenv('PAYME_ALLOW_ORDER_IDS', '')

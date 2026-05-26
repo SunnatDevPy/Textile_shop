@@ -42,6 +42,8 @@ class PaymeError:
     INVALID_ACCOUNT = -31050
     COULD_NOT_PERFORM = -31008
     COULD_NOT_CANCEL = -31007
+    # Bitta buyurtma bo'yicha Payme trx yaratilgan, Perform/Cancel kutilyapti (sandbox «Обрабатывается»).
+    ACCOUNT_BUSY_TRANSACTION = -31088
 
 
 # help.paycom.uz: CreateTransaction natijasida state=1, PerformTransaction dan keyin state=2
@@ -82,6 +84,22 @@ def _payme_check_reason_rpc(receipt: PaymentReceipt, rpc_state: int):
     if rpc_state < 0:
         return receipt.reason
     return None
+
+
+async def _payme_has_waiting_payme_receipt(order_id: int) -> bool:
+    """Perform yoki Cancel tugamagan faol Payme cheki (band hisob)."""
+    res = await db.execute(
+        select(PaymentReceipt.id)
+        .where(
+            PaymentReceipt.order_id == order_id,
+            PaymentReceipt.payment_system == "payme",
+            PaymentReceipt.perform_time.is_(None),
+            PaymentReceipt.cancel_time.is_(None),
+            PaymentReceipt.state >= 0,
+        )
+        .limit(1)
+    )
+    return res.scalar_one_or_none() is not None
 
 
 def _payme_account_missing_message() -> dict:
@@ -129,6 +147,23 @@ def _payme_order_not_payme_message() -> dict:
         "ru": "Заказ недоступен для оплаты через Payme.",
         "uz": "Buyurtma Payme orqali to'lanmaydi.",
         "en": "This order is not payable via Payme.",
+    }
+
+
+def _payme_account_blocked_status_message(status: str) -> dict:
+    """Счёт уже оплачен / отменён / не в состоянии оплаты."""
+    return {
+        "ru": f"Счёт недоступен для оплаты (статус заказа: {status}).",
+        "uz": f"To'lov uchun hisob band: buyurtma holati {status}.",
+        "en": f"The account cannot accept payment (order status: {status}).",
+    }
+
+
+def _payme_account_busy_payme_message(order_id: int) -> dict:
+    return {
+        "ru": f"По заказу уже создана транзакция Payme (ожидается проведение или отмена): {order_id}.",
+        "uz": f"Bu buyurtma bo'yicha Payme tranzaksiyasi allaqachon yaratilgan: {order_id}.",
+        "en": f"A Payme transaction is already in progress for this order: {order_id}.",
     }
 
 
@@ -519,11 +554,21 @@ async def check_perform_transaction(params: dict):
             data="order_id",
         )
 
-    # Buyurtma statusini tekshirish
+    # Buyurtma statusini tekshirish (sandbox «Заблокирован» — -31008 emas, balki -31050..)
     if order.status != Order.StatusOrder.NEW.value:
-        raise HTTPException(
-            status_code=PaymeError.COULD_NOT_PERFORM,
-            detail=f"Order status is not NEW: {order.status}"
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_account_blocked_status_message(str(order.status)),
+            data="order_id",
+        )
+
+    if conf.PAYME_CHECKPERFORM_BUSY_ACCOUNT and await _payme_has_waiting_payme_receipt(
+        order_id
+    ):
+        raise PaymeRpcError(
+            PaymeError.ACCOUNT_BUSY_TRANSACTION,
+            _payme_account_busy_payme_message(order_id),
+            data="order_id",
         )
 
     expected_amount = await get_order_amount_tiyin(order_id)
@@ -594,9 +639,10 @@ async def create_transaction(params: dict):
                     data="order_id",
                 )
             if order.status != Order.StatusOrder.NEW.value:
-                raise HTTPException(
-                    status_code=PaymeError.COULD_NOT_PERFORM,
-                    detail=f"Order status is not NEW: {order.status}",
+                raise PaymeRpcError(
+                    PaymeError.INVALID_ACCOUNT,
+                    _payme_account_blocked_status_message(str(order.status)),
+                    data="order_id",
                 )
             expected_amount = await get_order_amount_tiyin(order_id)
             canonical_tiyin = resolve_payme_amount_tiyin(
@@ -650,9 +696,10 @@ async def create_transaction(params: dict):
         )
 
     if order.status != Order.StatusOrder.NEW.value:
-        raise HTTPException(
-            status_code=PaymeError.COULD_NOT_PERFORM,
-            detail=f"Order status is not NEW: {order.status}",
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_account_blocked_status_message(str(order.status)),
+            data="order_id",
         )
 
     expected_amount = await get_order_amount_tiyin(order_id)
