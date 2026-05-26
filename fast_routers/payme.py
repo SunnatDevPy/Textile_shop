@@ -57,19 +57,28 @@ def _payme_rpc_tx_state(receipt: PaymentReceipt) -> int:
 
 
 def _payme_check_perform_time_rpc(rpc_state: int, db_perform_time) -> int:
-    """CheckTransaction / GetStatement: bekor (state < 0) bo‘lsa `perform_time` 0 (sandbox spetsifikatsiyasi)."""
+    """CheckTransaction / GetStatement: bekor (state < 0) bo‘lsa `perform_time` 0 (sandbox)."""
     if rpc_state < 0:
+        return 0
+    if rpc_state == STATE_WAITING_PAY:
         return 0
     if db_perform_time is None:
         return 0
     return int(db_perform_time)
 
 
-def _payme_check_cancel_time_rpc(db_cancel_time) -> int:
-    """Null o‘rniga 0 (timestamp raqam kutilganda)."""
-    if db_cancel_time is None:
-        return 0
-    return int(db_cancel_time)
+def _payme_check_cancel_time_rpc(receipt: PaymentReceipt, rpc_state: int) -> int:
+    """Kutmoqda (1) va to‘langan (2): cancel_time har doim 0; manfiy state: timestamp."""
+    if rpc_state < 0:
+        return int(receipt.cancel_time or 0)
+    return 0
+
+
+def _payme_check_reason_rpc(receipt: PaymentReceipt, rpc_state: int):
+    """Kutmoqda yoki yakunlangan: reason null (JSON); bekor uchun raqam."""
+    if rpc_state < 0:
+        return receipt.reason
+    return None
 
 
 def _parse_payme_order_id(raw) -> int:
@@ -405,10 +414,59 @@ async def create_transaction(params: dict):
                 status_code=PaymeError.COULD_NOT_PERFORM,
                 detail="Transaction already performed",
             )
+        db_st = int(existing_receipt.state) if existing_receipt.state is not None else 0
+        if db_st < 0:
+            # Payme sandbox bitta transaction_id bilan ketma-ket stsenariylar; bekor qilingan yozuvni
+            # qayta Create da "yaratildi" holatiga qaytaramiz (prod da id takrorlanmaydi).
+            order = await Order.get_or_none(order_id)
+            if not order:
+                raise HTTPException(
+                    status_code=PaymeError.INVALID_ACCOUNT,
+                    detail=f"Order not found: {order_id}",
+                )
+            payment_val = getattr(order.payment, "value", str(order.payment))
+            if payment_val != Order.Payment.PAYME.value:
+                raise HTTPException(
+                    status_code=PaymeError.INVALID_ACCOUNT,
+                    detail="Buyurtma Payme to'lovi emas",
+                )
+            if order.status != Order.StatusOrder.NEW.value:
+                raise HTTPException(
+                    status_code=PaymeError.COULD_NOT_PERFORM,
+                    detail=f"Order status is not NEW: {order.status}",
+                )
+            expected_amount = await get_order_amount_tiyin(order_id)
+            canonical_tiyin = resolve_payme_amount_tiyin(
+                amount,
+                expected_amount,
+                relax_som_equivalent=conf.PAYME_RELAX_AMOUNT_UNITS,
+            )
+            if canonical_tiyin is None:
+                raise PaymeRpcError(
+                    PaymeError.INVALID_ACCOUNT,
+                    _amount_mismatch_message(expected_amount, amount),
+                    data="order_id",
+                )
+            await PaymentReceipt.update(
+                existing_receipt.id,
+                order_id=order_id,
+                amount=canonical_tiyin,
+                state=0,
+                cancel_time=None,
+                reason=None,
+                perform_time=None,
+                create_time=time,
+                receipt_data=json.dumps(params),
+            )
+            return {
+                "create_time": time,
+                "transaction": str(existing_receipt.id),
+                "state": STATE_WAITING_PAY,
+            }
         return {
             "create_time": existing_receipt.create_time,
             "transaction": str(existing_receipt.id),
-            "state": _payme_rpc_tx_state(existing_receipt),
+            "state": STATE_WAITING_PAY,
         }
 
     # Buyurtmani tekshirish
@@ -554,6 +612,18 @@ async def cancel_transaction(params: dict):
             detail="Transaction not found"
         )
 
+    st = int(receipt.state) if receipt.state is not None else 0
+
+    # Payme idempotentligi: allaqachon bekor bo'lsa, birinchi Cancel dagi cancel_time/state.
+    # (perform_time branch perform qilingan yozuvda birinchi tekshiruv bo'lib qolganda
+    # takroriy chaqiruqlar har safar yangi cancel_time yozardi.)
+    if st < 0:
+        return {
+            "transaction": str(receipt.id),
+            "cancel_time": int(receipt.cancel_time or 0),
+            "state": st,
+        }
+
     if receipt.perform_time is not None:
         cancel_time = int(datetime.utcnow().timestamp() * 1000)
         await PaymentReceipt.update(
@@ -567,14 +637,6 @@ async def cancel_transaction(params: dict):
             "transaction": str(receipt.id),
             "cancel_time": cancel_time,
             "state": -1,
-        }
-
-    st = int(receipt.state) if receipt.state is not None else 0
-    if st < 0:
-        return {
-            "transaction": str(receipt.id),
-            "cancel_time": receipt.cancel_time,
-            "state": receipt.state,
         }
 
     # Perform qilinmagan (odatda state=0)
@@ -620,10 +682,10 @@ async def check_transaction(params: dict):
         result = {
             "create_time": receipt.create_time,
             "perform_time": _payme_check_perform_time_rpc(rpc_state, receipt.perform_time),
-            "cancel_time": _payme_check_cancel_time_rpc(receipt.cancel_time),
+            "cancel_time": _payme_check_cancel_time_rpc(receipt, rpc_state),
             "transaction": str(receipt.id),
             "state": rpc_state,
-            "reason": receipt.reason,
+            "reason": _payme_check_reason_rpc(receipt, rpc_state),
         }
     else:
         result = {
@@ -667,10 +729,10 @@ async def get_statement(params: dict):
                 },
                 "create_time": receipt.create_time,
                 "perform_time": _payme_check_perform_time_rpc(rpc_st, receipt.perform_time),
-                "cancel_time": _payme_check_cancel_time_rpc(receipt.cancel_time),
+                "cancel_time": _payme_check_cancel_time_rpc(receipt, rpc_st),
                 "transaction": str(receipt.id),
                 "state": rpc_st,
-                "reason": receipt.reason,
+                "reason": _payme_check_reason_rpc(receipt, rpc_st),
             }
         )
 
