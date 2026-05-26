@@ -220,7 +220,7 @@ Javob sarlavhalarida masalan: `X-RateLimit-Limit`, `X-RateLimit-Remaining`. Chek
 
 | O‘zgaruvchi | Vazifasi | Demo eslatma |
 |-------------|-----------|---------------|
-| `ADMIN_USERNAME`, `ADMIN_PASS` | Super admin | `ADMIN_PASS` — **faqat bcrypt hash** (oddiy matn **emas**). Lokal uchun `deploy.sh` yoki bcrypt generator bilan yarating. |
+| `ADMIN_USERNAME`, `ADMIN_PASS` | Super admin | **`.env.example` (demo):** `admin` / parol **`1111`** — `ADMIN_PASS` faylda **bcrypt hash** turadi. **Prod**da almashtiring. |
 | `SECRET_KEY` | Session / ichki sir | Ixtiyoriy uzun tasodifiy qator |
 | `DB_*` | PostgreSQL | Docker’da `DB_HOST=db`, `DB_PORT=5432` |
 | `PUBLIC_BASE_URL` | Click/Payme qaytish URL | **`https://sizning-domen.uz`** |
