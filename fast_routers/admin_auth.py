@@ -14,6 +14,15 @@ from models import AdminUser
 security = HTTPBasic()
 
 
+def _const_time_username_eq(a: str | None, b: str | None) -> bool:
+    """secrets.compare_digest turli uzunlikda ValueError bermasligi uchun (Swagger/bo‘shliq xatolari → 401, 500 emas)."""
+    xa = (a or "").strip()
+    xb = (b or "").strip()
+    if not xa or not xb or len(xa) != len(xb):
+        return False
+    return secrets.compare_digest(xa, xb)
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """ADMIN_PASS bcrypt hash bo'lmasa yoki Docker Compose $ interpolatsiyasidan buzqan bo'lmasin — 500 o'rniga False."""
     if not plain_password or not hashed_password:
@@ -36,7 +45,7 @@ async def verify_admin_credentials(
     # Super admin (.env) ham oddiy admin endpointlarga kira olishi kerak.
     admin_username = Configuration.ADMIN_USERNAME
     admin_pass_hash = Configuration.ADMIN_PASS
-    if secrets.compare_digest(credentials.username, admin_username) and verify_password(
+    if _const_time_username_eq(credentials.username, admin_username) and verify_password(
         credentials.password, admin_pass_hash
     ):
         return SimpleNamespace(
@@ -74,7 +83,7 @@ async def verify_super_admin_credentials(
     admin_username = Configuration.ADMIN_USERNAME
     admin_pass_hash = Configuration.ADMIN_PASS
 
-    if not secrets.compare_digest(credentials.username, admin_username):
+    if not _const_time_username_eq(credentials.username, admin_username):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid super admin credentials",

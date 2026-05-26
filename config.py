@@ -5,13 +5,23 @@ from typing import Optional
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()
 
-# bcrypt hash (ADMIN_PASS): Docker Compose .env da har bir `$` ni `$$` deb yoziladi; konteyner odatda tug'ri qiymat
-# bermoqda. Agar qiymat os.muhiti literal `$$2b$$12$$...` bo'lsa, bcrypt uchun bitta `$` ga keltirish kerak.
-_adm = os.environ.get("ADMIN_PASS")
-if _adm and "$$" in _adm:
-    os.environ["ADMIN_PASS"] = _adm.replace("$$", "$")
+def _normalize_env_credential(name: str) -> None:
+    """.env / Docker: qo'shtirnoq, bo'shliq, Compose uchun $$ escape."""
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return
+    s = str(raw).strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'":
+        s = s[1:-1]
+    if name == "ADMIN_PASS" and "$$" in s:
+        s = s.replace("$$", "$")
+    os.environ[name] = s
+
+
+load_dotenv()
+_normalize_env_credential("ADMIN_USERNAME")
+_normalize_env_credential("ADMIN_PASS")
 
 
 @dataclass
