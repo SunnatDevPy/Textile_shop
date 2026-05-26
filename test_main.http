@@ -10,10 +10,11 @@ Accept: application/json
 ###
 
 ### Payme Merchant API (JSON-RPC) — kabinet va sandbox shu URL ga urinadi
-# Authorization: Basic base64(MERCHANT_ID:PAYME_SECRET_KEY)
-# Masalan: echo -n "your_merchant_id:your_secret" | base64
+# Authorization: Basic base64(Paycom:PAYME_SECRET_KEY)  — rasmiy Paycom forma
+# Qo'shimcha: base64(MERCHANT_ID:PAYME_SECRET_KEY) ham ishlaydi (eski moslik)
+# Masalan: printf 'Paycom:sizning_kalitingiz' | base64 -w0
 POST {{baseUrl}}/api/payme
-Authorization: Basic REPLACE_WITH_BASE64_MERCHANT_ID_COLON_SECRET
+Authorization: Basic REPLACE_WITH_BASE64_PAYCOM_COLON_SECRET
 Content-Type: application/json
 
 {
@@ -32,7 +33,7 @@ Content-Type: application/json
 
 ### Payme — oxirida slash bo'lsa ham (301 bo'lmasin)
 POST {{baseUrl}}/api/payme/
-Authorization: Basic REPLACE_WITH_BASE64_MERCHANT_ID_COLON_SECRET
+Authorization: Basic REPLACE_WITH_BASE64_PAYCOM_COLON_SECRET
 Content-Type: application/json
 
 {

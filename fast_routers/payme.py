@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import json
+import secrets
 from datetime import datetime
 from typing import Optional
 
@@ -10,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel
 from sqlalchemy import select
 from starlette import status
+from starlette.responses import JSONResponse
 
 from config import conf
 from models import Order, PaymentReceipt
@@ -40,67 +42,113 @@ class PaymeError:
 
 
 def verify_payme_auth(authorization: Optional[str]) -> bool:
-    """Payme autentifikatsiyasini tekshirish"""
+    """Payme (Paycom) Basic Auth.
+
+    Rasmiy: login har doim "Paycom", parol — kassa kaliti (help.paycom.uz / Merchant API template).
+    Eski boshqa integratsiyalar uchun: login = PAYME_MERCHANT_ID ham qabul qilinadi.
+    """
     if not authorization:
         return False
 
+    if not (PAYME_SECRET_KEY or "").strip():
+        return False
+
     try:
-        auth_type, credentials = authorization.split(' ')
+        auth_type, credentials = authorization.split(' ', 1)
         if auth_type.lower() != 'basic':
             return False
 
-        decoded = base64.b64decode(credentials).decode('utf-8')
-        username, password = decoded.split(':')
+        decoded = base64.b64decode(credentials.strip()).decode('utf-8')
+        # Parolda ':' bo'lmasligi kerak Paycom dizaynida; yana ehtiyot: birinchi ':' dan keyingi hammasi kalit
+        username, password = decoded.split(':', 1)
 
-        # Username Payme tomonidan berilgan merchant_id bo'lishi kerak
-        # Password esa secret_key
-        return username == PAYME_MERCHANT_ID and password == PAYME_SECRET_KEY
+        username = username.strip()
+        password = password.strip()
+        merchant_id = (PAYME_MERCHANT_ID or '').strip()
+
+        secret = PAYME_SECRET_KEY.strip()
+
+        # Paycom Merchant API template: Authorization = Base64("Paycom:SECRET_KEY")
+        if username.lower() == 'paycom':
+            try:
+                return secrets.compare_digest(password, secret)
+            except ValueError:
+                return False
+
+        if merchant_id and username == merchant_id:
+            try:
+                return secrets.compare_digest(password, secret)
+            except ValueError:
+                return False
+
+        return False
     except Exception:
         return False
 
 
 def create_payme_error(code: int, message: str, data: Optional[str] = None):
-    """Payme xatolik javobini yaratish"""
-    error = {
+    """Payme xatolik qismi"""
+    error: dict = {
         "code": code,
-        "message": message
+        "message": message,
     }
     if data:
         error["data"] = data
     return {"error": error}
 
 
+def auth_failed_json_rpc(request_id) -> dict:
+    """HTTP 401 o'rniga Payme spetsifikatsiyasi: JSON-RPC + 200 (sandbox kutilishi)."""
+    return {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        **create_payme_error(
+            PaymeError.INSUFFICIENT_PRIVILEGE,
+            "Invalid authorization",
+        ),
+    }
+
+
 @payme_router.post('/', name='Payme Merchant API (slash)', include_in_schema=False)
 @payme_router.post('', name='Payme Merchant API')
 async def payme_webhook(
     request: Request,
-    authorization: Optional[str] = Header(None)
+    authorization: Optional[str] = Header(None),
 ):
     """
     Payme Merchant API endpoint
     Payme JSON-RPC 2.0 protokolidan foydalanadi
     """
-
-    # Autentifikatsiyani tekshirish
-    if not verify_payme_auth(authorization):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized"
-        )
-
+    body: dict = {}
     try:
         body = await request.json()
+        if not isinstance(body, dict):
+            body = {}
     except Exception:
-        return create_payme_error(
-            PaymeError.INVALID_JSON_RPC,
-            "Invalid JSON-RPC request"
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "jsonrpc": "2.0",
+                "id": None,
+                **create_payme_error(
+                    PaymeError.INVALID_JSON_RPC,
+                    "Invalid JSON-RPC request",
+                ),
+            },
+        )
+
+    request_id = body.get('id')
+
+    if not verify_payme_auth(authorization):
+        # Payme sandbox: RPC xatoliklar HTTP 200 bilan qaytishi kerak
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=auth_failed_json_rpc(request_id),
         )
 
     method = body.get('method')
-    params = body.get('params', {})
-    request_id = body.get('id')
+    params = body.get('params') or {}
 
-    # Method'ga qarab handler'ni chaqirish
     handlers = {
         'CheckPerformTransaction': check_perform_transaction,
         'CreateTransaction': create_transaction,
