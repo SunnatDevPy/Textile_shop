@@ -15,10 +15,19 @@ security = HTTPBasic()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(
-        plain_password.encode("utf-8"),
-        hashed_password.encode("utf-8"),
-    )
+    """ADMIN_PASS bcrypt hash bo'lmasa yoki Docker Compose $ interpolatsiyasidan buzqan bo'lmasin — 500 o'rniga False."""
+    if not plain_password or not hashed_password:
+        return False
+    h = hashed_password.strip()
+    if len(h) < 20 or not h.startswith("$2"):
+        return False
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            h.encode("utf-8"),
+        )
+    except ValueError:
+        return False
 
 
 async def verify_admin_credentials(

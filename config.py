@@ -7,6 +7,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# bcrypt hash (ADMIN_PASS): Docker Compose .env da har bir `$` ni `$$` deb yoziladi; konteyner odatda tug'ri qiymat
+# bermoqda. Agar qiymat os.muhiti literal `$$2b$$12$$...` bo'lsa, bcrypt uchun bitta `$` ga keltirish kerak.
+_adm = os.environ.get("ADMIN_PASS")
+if _adm and "$$" in _adm:
+    os.environ["ADMIN_PASS"] = _adm.replace("$$", "$")
+
 
 @dataclass
 class BaseConfig:
