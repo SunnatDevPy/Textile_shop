@@ -223,8 +223,41 @@ class PaymeRpcError(Exception):
         self.data = data
 
 
+def _payme_parse_allow_order_ids() -> Optional[frozenset[int]]:
+    """PAYME_ALLOW_ORDER_IDS CSV; bo‘sh bo‘lsa allowlist tekshiruvi yo‘q."""
+    raw = (conf.PAYME_ALLOW_ORDER_IDS or "").strip()
+    if not raw:
+        return None
+    out: set[int] = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            out.add(int(part))
+        except ValueError:
+            continue
+    return frozenset(out) if out else None
+
+
+def _payme_require_order_allowed(order_id: int) -> None:
+    """Sozlangan allowlist ichida bo‘lmagan order uchun INVALID_ACCOUNT."""
+    allowed = _payme_parse_allow_order_ids()
+    if allowed is None or order_id in allowed:
+        return
+    raise PaymeRpcError(
+        PaymeError.INVALID_ACCOUNT,
+        {
+            "ru": f"Недопустимые параметры аккаунта (order_id={order_id}).",
+            "uz": f"Hesob parametrlari yaroqsiz (order_id={order_id}).",
+            "en": f"Invalid account parameters (order_id={order_id}).",
+        },
+        data="order_id",
+    )
+
+
 def _amount_mismatch_message(expected: int, got: int) -> dict:
-    """Payme INVALID_ACCOUNT (-31050) uchun multilingual message (sandbox talabi)."""
+    """Payme INVALID_AMOUNT (-31001): сумма платежа не совпадает с заказом."""
     som = expected // 100
     return {
         "ru": (
@@ -344,6 +377,7 @@ async def check_perform_transaction(params: dict):
     """
     account = params.get('account') or {}
     order_id = _parse_payme_order_id(account.get('order_id'))
+    _payme_require_order_allowed(order_id)
     amount = _parse_payme_amount_tiyin(params.get('amount'))
 
     # Buyurtmani tekshirish
@@ -378,9 +412,9 @@ async def check_perform_transaction(params: dict):
         is None
     ):
         raise PaymeRpcError(
-            PaymeError.INVALID_ACCOUNT,
+            PaymeError.INVALID_AMOUNT,
             _amount_mismatch_message(expected_amount, amount),
-            data="order_id",
+            data="amount",
         )
 
     if amount < PAYME_MIN_AMOUNT:
@@ -401,6 +435,7 @@ async def create_transaction(params: dict):
     amount = _parse_payme_amount_tiyin(params.get('amount'))
     account = params.get('account') or {}
     order_id = _parse_payme_order_id(account.get('order_id'))
+    _payme_require_order_allowed(order_id)
 
     # Mavjud tranzaksiyani tekshirish
     existing = await db.execute(
@@ -443,9 +478,9 @@ async def create_transaction(params: dict):
             )
             if canonical_tiyin is None:
                 raise PaymeRpcError(
-                    PaymeError.INVALID_ACCOUNT,
+                    PaymeError.INVALID_AMOUNT,
                     _amount_mismatch_message(expected_amount, amount),
-                    data="order_id",
+                    data="amount",
                 )
             await PaymentReceipt.update(
                 existing_receipt.id,
@@ -498,9 +533,9 @@ async def create_transaction(params: dict):
     )
     if canonical_tiyin is None:
         raise PaymeRpcError(
-            PaymeError.INVALID_ACCOUNT,
+            PaymeError.INVALID_AMOUNT,
             _amount_mismatch_message(expected_amount, amount),
-            data="order_id",
+            data="amount",
         )
 
     # Yangi tranzaksiya yaratish

@@ -47,6 +47,19 @@ class DatabaseConfig(BaseConfig):
     def db_url(self):
         return f"postgresql+asyncpg://{self.USER}:{self.PASS}@{self.HOST}:{self.PORT}/{self.NAME}"
 
+def _payme_relax_amount_units_default() -> bool:
+    """Sandbox odatda amount so'm butun soni; prod Payme dokumentatsiyasi bo'yicha tiyn.
+
+    PAYME_RELAX_AMOUNT_UNITS muhiti bo'sh/unset bo'lsa, test checkout hostida moslash (relax),
+    aks holda aniq tiyn (strict).
+    """
+    raw = os.getenv('PAYME_RELAX_AMOUNT_UNITS')
+    if raw is not None and str(raw).strip() != '':
+        return str(raw).strip().lower() in {'1', 'true', 'yes', 'on'}
+    endpoint = os.getenv('PAYME_ENDPOINT', 'https://checkout.paycom.uz').lower()
+    return 'test.paycom' in endpoint
+
+
 @dataclass
 class Configuration:
     """All in one configuration's class"""
@@ -61,9 +74,10 @@ class Configuration:
     PAYME_MERCHANT_ID: str = os.getenv('PAYME_MERCHANT_ID', '')
     PAYME_SECRET_KEY: str = os.getenv('PAYME_SECRET_KEY', '')
     PAYME_ENDPOINT: str = os.getenv('PAYME_ENDPOINT', 'https://checkout.paycom.uz')
-    PAYME_RELAX_AMOUNT_UNITS: bool = os.getenv(
-        'PAYME_RELAX_AMOUNT_UNITS', 'false'
-    ).lower() in {'1', 'true', 'yes', 'on'}
+    PAYME_RELAX_AMOUNT_UNITS: bool = _payme_relax_amount_units_default()
+    # Bo'sh — barcha buyurtma id lari Payme uchun ruxsat (prod). Sandbox: "noto'g'ri akkaunt"
+    # testlari uchun CSV, masalan "5" (faqat order_id shu ro'yxatda bo'lsa ishlaydi).
+    PAYME_ALLOW_ORDER_IDS: str = os.getenv('PAYME_ALLOW_ORDER_IDS', '')
     PUBLIC_BASE_URL: str = os.getenv('PUBLIC_BASE_URL', '')
     PAYMENT_CALLBACK_IP_WHITELIST: str = os.getenv('PAYMENT_CALLBACK_IP_WHITELIST', '')
     RATE_LIMIT_PER_MINUTE: int = int(os.getenv('RATE_LIMIT_PER_MINUTE', '120'))
