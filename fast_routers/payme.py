@@ -27,6 +27,9 @@ PAYME_SECRET_KEY = conf.PAYME_SECRET_KEY
 PAYME_MIN_AMOUNT = 100  # Minimal summa (tiyin)
 PAYME_MAX_AMOUNT = 100000000  # Maksimal summa (tiyin)
 
+# Payme Merchant API: account — faqat shu kalitlar (prod); testda qo'shimcha kalit sandbox xatosi.
+_PAYME_ACCOUNT_ALLOWED_KEYS = frozenset({"order_id"})
+
 
 class PaymeError:
     """Payme xatolik kodlari"""
@@ -81,29 +84,145 @@ def _payme_check_reason_rpc(receipt: PaymentReceipt, rpc_state: int):
     return None
 
 
+def _payme_account_missing_message() -> dict:
+    return {
+        "ru": "Параметр account не передан.",
+        "uz": "account parametri berilmagan.",
+        "en": "Missing account parameter.",
+    }
+
+
+def _payme_account_not_object_message() -> dict:
+    return {
+        "ru": "Параметр account должен быть объектом.",
+        "uz": "account obyekt bo'lishi kerak.",
+        "en": "The account parameter must be a JSON object.",
+    }
+
+
+def _payme_order_id_missing_message() -> dict:
+    return {
+        "ru": "Не указан order_id в account.",
+        "uz": "account.order_id ko'rsatilmagan.",
+        "en": "order_id is missing in account.",
+    }
+
+
+def _payme_order_id_invalid_message() -> dict:
+    return {
+        "ru": "Неверный order_id.",
+        "uz": "order_id noto'g'ri.",
+        "en": "Invalid order_id.",
+    }
+
+
+def _payme_order_not_found_message(order_id: int) -> dict:
+    return {
+        "ru": f"Заказ не найден: {order_id}.",
+        "uz": f"Buyurtma topilmadi: {order_id}.",
+        "en": f"Order not found: {order_id}.",
+    }
+
+
+def _payme_order_not_payme_message() -> dict:
+    return {
+        "ru": "Заказ недоступен для оплаты через Payme.",
+        "uz": "Buyurtma Payme orqali to'lanmaydi.",
+        "en": "This order is not payable via Payme.",
+    }
+
+
+def _payme_unknown_account_field_message(field: str) -> dict:
+    return {
+        "ru": f"Недопустимое поле account: {field}.",
+        "uz": f"account uchun ruxsat etilmagan maydon: {field}.",
+        "en": f"Invalid account field: {field}.",
+    }
+
+
+def _payme_amount_missing_message() -> dict:
+    return {
+        "ru": "Сумма не указана.",
+        "uz": "Summa ko'rsatilmagan.",
+        "en": "Amount not provided.",
+    }
+
+
+def _payme_amount_invalid_message() -> dict:
+    return {
+        "ru": "Неверная сумма.",
+        "uz": "Noto'g'ri summa.",
+        "en": "Invalid amount.",
+    }
+
+
+def _payme_amount_too_small_message(amount: int) -> dict:
+    return {
+        "ru": f"Сумма слишком мала: {amount}.",
+        "uz": f"Summa juda kichik: {amount}.",
+        "en": f"Amount is too small: {amount}.",
+    }
+
+
+def _require_payme_account_dict(params: dict) -> dict:
+    """JSON-RPC params.account — obyekt bo'lishi kerak (help.paycom.uz: -31050..-31099 + data)."""
+    raw = params.get("account")
+    if raw is None:
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_account_missing_message(),
+            data="account",
+        )
+    if not isinstance(raw, dict):
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_account_not_object_message(),
+            data="account",
+        )
+    return raw
+
+
+def _validate_payme_account_keyset(account: dict) -> None:
+    """Sandbox: account ichida order_id dan boshqa kalitlar — noto'g'ri parametrlar."""
+    if not conf.PAYME_ACCOUNT_REJECT_EXTRA_KEYS:
+        return
+    extra = set(account.keys()) - _PAYME_ACCOUNT_ALLOWED_KEYS
+    if extra:
+        field = sorted(extra)[0]
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_unknown_account_field_message(field),
+            data=field,
+        )
+
+
 def _parse_payme_order_id(raw) -> int:
     """Payme account.order_id ko'pincha JSON da string ('3') — DB bigint bilan moslash uchun."""
     if raw is None or raw == "":
-        raise HTTPException(
-            status_code=PaymeError.INVALID_ACCOUNT,
-            detail="order_id not provided",
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_order_id_missing_message(),
+            data="order_id",
         )
     if isinstance(raw, bool):
-        raise HTTPException(
-            status_code=PaymeError.INVALID_ACCOUNT,
-            detail="order_id invalid",
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_order_id_invalid_message(),
+            data="order_id",
         )
     try:
         oid = int(str(raw).strip())
     except (TypeError, ValueError):
-        raise HTTPException(
-            status_code=PaymeError.INVALID_ACCOUNT,
-            detail="order_id invalid",
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_order_id_invalid_message(),
+            data="order_id",
         )
     if oid < 1:
-        raise HTTPException(
-            status_code=PaymeError.INVALID_ACCOUNT,
-            detail="order_id invalid",
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_order_id_invalid_message(),
+            data="order_id",
         )
     return oid
 
@@ -111,9 +230,10 @@ def _parse_payme_order_id(raw) -> int:
 def _parse_payme_amount_tiyin(raw) -> int:
     """amount tiyinda int bo'lishi kerak (-31001 noto'g'ri miqdor uchun)."""
     if raw is None:
-        raise HTTPException(
-            status_code=PaymeError.INVALID_AMOUNT,
-            detail="amount not provided",
+        raise PaymeRpcError(
+            PaymeError.INVALID_AMOUNT,
+            _payme_amount_missing_message(),
+            data="amount",
         )
     try:
         if isinstance(raw, float):
@@ -122,9 +242,10 @@ def _parse_payme_amount_tiyin(raw) -> int:
             raw = int(raw)
         amt = int(raw)
     except (TypeError, ValueError):
-        raise HTTPException(
-            status_code=PaymeError.INVALID_AMOUNT,
-            detail="amount invalid",
+        raise PaymeRpcError(
+            PaymeError.INVALID_AMOUNT,
+            _payme_amount_invalid_message(),
+            data="amount",
         )
     return amt
 
@@ -375,7 +496,8 @@ async def check_perform_transaction(params: dict):
     """
     To'lovni amalga oshirish mumkinligini tekshirish
     """
-    account = params.get('account') or {}
+    account = _require_payme_account_dict(params)
+    _validate_payme_account_keyset(account)
     order_id = _parse_payme_order_id(account.get('order_id'))
     _payme_require_order_allowed(order_id)
     amount = _parse_payme_amount_tiyin(params.get('amount'))
@@ -383,16 +505,18 @@ async def check_perform_transaction(params: dict):
     # Buyurtmani tekshirish
     order = await Order.get_or_none(order_id)
     if not order:
-        raise HTTPException(
-            status_code=PaymeError.INVALID_ACCOUNT,
-            detail=f"Order not found: {order_id}"
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_order_not_found_message(order_id),
+            data="order_id",
         )
 
     payment_val = getattr(order.payment, "value", str(order.payment))
     if payment_val != Order.Payment.PAYME.value:
-        raise HTTPException(
-            status_code=PaymeError.INVALID_ACCOUNT,
-            detail="Buyurtma Payme to'lovi emas",
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_order_not_payme_message(),
+            data="order_id",
         )
 
     # Buyurtma statusini tekshirish
@@ -418,9 +542,10 @@ async def check_perform_transaction(params: dict):
         )
 
     if amount < PAYME_MIN_AMOUNT:
-        raise HTTPException(
-            status_code=PaymeError.INVALID_AMOUNT,
-            detail=f"Amount is too small: {amount}"
+        raise PaymeRpcError(
+            PaymeError.INVALID_AMOUNT,
+            _payme_amount_too_small_message(amount),
+            data="amount",
         )
 
     return {"allow": True}
@@ -432,10 +557,11 @@ async def create_transaction(params: dict):
     """
     transaction_id = params.get('id')
     time = params.get('time')
-    amount = _parse_payme_amount_tiyin(params.get('amount'))
-    account = params.get('account') or {}
+    account = _require_payme_account_dict(params)
+    _validate_payme_account_keyset(account)
     order_id = _parse_payme_order_id(account.get('order_id'))
     _payme_require_order_allowed(order_id)
+    amount = _parse_payme_amount_tiyin(params.get('amount'))
 
     # Mavjud tranzaksiyani tekshirish
     existing = await db.execute(
@@ -455,15 +581,17 @@ async def create_transaction(params: dict):
             # qayta Create da "yaratildi" holatiga qaytaramiz (prod da id takrorlanmaydi).
             order = await Order.get_or_none(order_id)
             if not order:
-                raise HTTPException(
-                    status_code=PaymeError.INVALID_ACCOUNT,
-                    detail=f"Order not found: {order_id}",
+                raise PaymeRpcError(
+                    PaymeError.INVALID_ACCOUNT,
+                    _payme_order_not_found_message(order_id),
+                    data="order_id",
                 )
             payment_val = getattr(order.payment, "value", str(order.payment))
             if payment_val != Order.Payment.PAYME.value:
-                raise HTTPException(
-                    status_code=PaymeError.INVALID_ACCOUNT,
-                    detail="Buyurtma Payme to'lovi emas",
+                raise PaymeRpcError(
+                    PaymeError.INVALID_ACCOUNT,
+                    _payme_order_not_payme_message(),
+                    data="order_id",
                 )
             if order.status != Order.StatusOrder.NEW.value:
                 raise HTTPException(
@@ -507,16 +635,18 @@ async def create_transaction(params: dict):
     # Buyurtmani tekshirish
     order = await Order.get_or_none(order_id)
     if not order:
-        raise HTTPException(
-            status_code=PaymeError.INVALID_ACCOUNT,
-            detail=f"Order not found: {order_id}"
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_order_not_found_message(order_id),
+            data="order_id",
         )
 
     payment_val = getattr(order.payment, "value", str(order.payment))
     if payment_val != Order.Payment.PAYME.value:
-        raise HTTPException(
-            status_code=PaymeError.INVALID_ACCOUNT,
-            detail="Buyurtma Payme to'lovi emas",
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_order_not_payme_message(),
+            data="order_id",
         )
 
     if order.status != Order.StatusOrder.NEW.value:

@@ -60,6 +60,18 @@ def _payme_relax_amount_units_default() -> bool:
     return 'test.paycom' in endpoint
 
 
+def _payme_account_reject_extra_keys_default() -> bool:
+    """Sandbox invalid-account testlarida `account` ga qo'shimcha kalit kelishi mumkin.
+
+    PAYME_ACCOUNT_REJECT_EXTRA_KEYS bo'sh bo'lsa, test.paycom uchun faqat ``order_id`` qoldirish.
+    """
+    raw = os.getenv('PAYME_ACCOUNT_REJECT_EXTRA_KEYS')
+    if raw is not None and str(raw).strip() != '':
+        return str(raw).strip().lower() in {'1', 'true', 'yes', 'on'}
+    endpoint = os.getenv('PAYME_ENDPOINT', 'https://checkout.paycom.uz').lower()
+    return 'test.paycom' in endpoint
+
+
 @dataclass
 class Configuration:
     """All in one configuration's class"""
@@ -75,6 +87,7 @@ class Configuration:
     PAYME_SECRET_KEY: str = os.getenv('PAYME_SECRET_KEY', '')
     PAYME_ENDPOINT: str = os.getenv('PAYME_ENDPOINT', 'https://checkout.paycom.uz')
     PAYME_RELAX_AMOUNT_UNITS: bool = _payme_relax_amount_units_default()
+    PAYME_ACCOUNT_REJECT_EXTRA_KEYS: bool = _payme_account_reject_extra_keys_default()
     # Bo'sh — barcha buyurtma id lari Payme uchun ruxsat (prod). Sandbox: "noto'g'ri akkaunt"
     # testlari uchun CSV, masalan "5" (faqat order_id shu ro'yxatda bo'lsa ishlaydi).
     PAYME_ALLOW_ORDER_IDS: str = os.getenv('PAYME_ALLOW_ORDER_IDS', '')
