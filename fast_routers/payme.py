@@ -70,6 +70,7 @@ def create_payme_error(code: int, message: str, data: Optional[str] = None):
     return {"error": error}
 
 
+@payme_router.post('/', name='Payme Merchant API (slash)', include_in_schema=False)
 @payme_router.post('', name='Payme Merchant API')
 async def payme_webhook(
     request: Request,

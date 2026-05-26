@@ -78,3 +78,69 @@
 2026-05-06 11:39:38 | INFO     | HTTP Request | method=GET | path=/api/panel/me | status=200 | duration_ms=363.88
 2026-05-06 11:39:39 | INFO     | HTTP Request | method=GET | path=/api/docs | status=200 | duration_ms=0.60
 2026-05-06 11:40:02 | INFO     | HTTP Request | method=POST | path=/api/categories | status=200 | duration_ms=398.06
+2026-05-20 11:20:38 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-20 11:20:38 | INFO     | Database migrations completed
+2026-05-20 11:20:38 | INFO     | Creating database indexes...
+2026-05-20 11:20:38 | INFO     | Database indexes created successfully
+2026-05-20 11:22:26 | INFO     | Starting Textile Shop API | version=1.0.0
+2026-05-20 11:22:26 | INFO     | Database migrations completed
+2026-05-20 11:22:26 | INFO     | Creating database indexes...
+2026-05-20 11:22:26 | INFO     | Database indexes created successfully
+2026-05-20 11:50:11 | INFO     | HTTP Request | method=OPTIONS | path=/auth/me | status=200 | duration_ms=1.77
+2026-05-20 11:50:11 | INFO     | HTTP Request | method=OPTIONS | path=/auth/me | status=200 | duration_ms=2.52
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=OPTIONS | path=/ai/settings | status=200 | duration_ms=0.39
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=OPTIONS | path=/reports/dashboard | status=200 | duration_ms=0.87
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=OPTIONS | path=/reports/dashboard-series | status=200 | duration_ms=0.21
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=OPTIONS | path=/reports/profit-loss | status=200 | duration_ms=1.70
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/reports/dashboard | status=405 | duration_ms=2.16
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=OPTIONS | path=/reports/category-share | status=200 | duration_ms=2.85
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/reports/dashboard-series | status=405 | duration_ms=3.42
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/ai/settings | status=405 | duration_ms=3.01
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=OPTIONS | path=/reports/category-share | status=200 | duration_ms=3.27
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=OPTIONS | path=/reports/profit-loss | status=200 | duration_ms=3.28
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/reports/profit-loss | status=405 | duration_ms=3.78
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/reports/dashboard | status=405 | duration_ms=4.24
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/reports/category-share | status=405 | duration_ms=2.95
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/reports/dashboard-series | status=405 | duration_ms=1.97
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/ai/settings | status=405 | duration_ms=1.48
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/reports/profit-loss | status=405 | duration_ms=1.81
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/ai/settings | status=405 | duration_ms=0.41
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/ai/settings | status=405 | duration_ms=0.36
+2026-05-20 11:50:12 | INFO     | HTTP Request | method=GET | path=/reports/category-share | status=405 | duration_ms=0.41
+2026-05-20 12:33:32 | INFO     | HTTP Request | method=OPTIONS | path=/reports/dashboard | status=200 | duration_ms=24.02
+2026-05-20 12:33:32 | INFO     | HTTP Request | method=OPTIONS | path=/reports/dashboard-series | status=200 | duration_ms=35.24
+2026-05-20 12:33:32 | INFO     | HTTP Request | method=OPTIONS | path=/reports/category-share | status=200 | duration_ms=34.69
+2026-05-20 12:33:32 | INFO     | HTTP Request | method=OPTIONS | path=/reports/profit-loss | status=200 | duration_ms=23.91
+2026-05-20 12:33:32 | INFO     | HTTP Request | method=GET | path=/reports/dashboard | status=405 | duration_ms=16.72
+2026-05-20 12:33:32 | INFO     | HTTP Request | method=GET | path=/reports/dashboard-series | status=405 | duration_ms=17.17
+2026-05-20 12:33:32 | INFO     | HTTP Request | method=GET | path=/reports/category-share | status=405 | duration_ms=17.49
+2026-05-20 12:33:32 | INFO     | HTTP Request | method=GET | path=/reports/profit-loss | status=405 | duration_ms=17.74
+2026-05-20 12:33:33 | INFO     | HTTP Request | method=GET | path=/reports/dashboard-series | status=405 | duration_ms=2.01
+2026-05-20 12:33:33 | INFO     | HTTP Request | method=GET | path=/reports/category-share | status=405 | duration_ms=2.62
+2026-05-20 12:33:33 | INFO     | HTTP Request | method=GET | path=/reports/dashboard | status=405 | duration_ms=3.09
+2026-05-20 12:33:33 | INFO     | HTTP Request | method=GET | path=/reports/profit-loss | status=405 | duration_ms=3.07
+2026-05-20 12:33:34 | INFO     | HTTP Request | method=GET | path=/reports/dashboard | status=405 | duration_ms=1.35
+2026-05-20 12:33:34 | INFO     | HTTP Request | method=GET | path=/reports/dashboard-series | status=405 | duration_ms=1.90
+2026-05-20 12:33:34 | INFO     | HTTP Request | method=GET | path=/reports/category-share | status=405 | duration_ms=2.16
+2026-05-20 12:33:34 | INFO     | HTTP Request | method=GET | path=/reports/profit-loss | status=405 | duration_ms=2.41
+2026-05-20 12:33:35 | INFO     | HTTP Request | method=GET | path=/reports/dashboard-series | status=405 | duration_ms=2.60
+2026-05-20 12:33:35 | INFO     | HTTP Request | method=GET | path=/reports/category-share | status=405 | duration_ms=3.28
+2026-05-20 12:33:35 | INFO     | HTTP Request | method=GET | path=/reports/dashboard | status=405 | duration_ms=3.43
+2026-05-20 12:33:35 | INFO     | HTTP Request | method=GET | path=/reports/profit-loss | status=405 | duration_ms=3.65
+2026-05-20 13:58:15 | INFO     | HTTP Request | method=GET | path=/docs | status=200 | duration_ms=19.91
+2026-05-20 13:58:16 | INFO     | HTTP Request | method=GET | path=/openapi.json | status=200 | duration_ms=420.04
+2026-05-20 14:43:58 | INFO     | HTTP Request | method=GET | path=/products | status=200 | duration_ms=444.58
+2026-05-20 14:44:04 | INFO     | HTTP Request | method=GET | path=/product-items | status=200 | duration_ms=8.94
+2026-05-20 14:44:34 | INFO     | HTTP Request | method=GET | path=/docs | status=200 | duration_ms=1.94
+2026-05-20 14:44:34 | INFO     | HTTP Request | method=GET | path=/openapi.json | status=200 | duration_ms=6.28
+2026-05-20 14:44:35 | INFO     | HTTP Request | method=GET | path=/docs | status=200 | duration_ms=994.76
+2026-05-20 14:44:35 | INFO     | HTTP Request | method=GET | path=/openapi.json | status=200 | duration_ms=1.96
+2026-05-20 14:44:35 | INFO     | HTTP Request | method=GET | path=/docs | status=200 | duration_ms=0.27
+2026-05-20 14:44:35 | INFO     | HTTP Request | method=GET | path=/openapi.json | status=200 | duration_ms=1.48
+2026-05-20 14:44:40 | INFO     | HTTP Request | method=GET | path=/ | status=405 | duration_ms=1.93
+2026-05-20 14:44:40 | INFO     | HTTP Request | method=GET | path=/favicon.ico | status=405 | duration_ms=0.43
+2026-05-20 14:44:53 | INFO     | HTTP Request | method=OPTIONS | path=/auth/tenant-login | status=200 | duration_ms=0.85
+2026-05-20 14:44:53 | INFO     | HTTP Request | method=POST | path=/auth/tenant-login | status=405 | duration_ms=0.62
+2026-05-20 14:45:25 | INFO     | HTTP Request | method=GET | path=/ | status=405 | duration_ms=0.89
+2026-05-20 14:45:25 | INFO     | HTTP Request | method=GET | path=/favicon.ico | status=405 | duration_ms=0.76
+2026-05-20 14:48:32 | INFO     | Shutting down Textile Shop API

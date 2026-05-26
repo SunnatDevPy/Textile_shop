@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, Response, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -88,7 +87,8 @@ app = FastAPI(
         "Super admin operator/admin yaratadi, operator asosan buyurtma bilan ishlaydi.\n"
         "Click/Payme uchun callback endpointlar tayyorlangan.\n"
         "Excel import, order/product history va loglar API mavjud.\n"
-        "JWT endpointlari bu loyihada o'chirilgan."
+        "JWT endpointlari bu loyihada o'chirilgan.\n"
+        "Statik admin/client UI bu serverda mount qilinmaydi — faqat REST API."
     ),
     version="1.0.0",
     docs_url="/api/docs",
@@ -99,21 +99,6 @@ app = FastAPI(
 
 # Mount static files BEFORE including routers
 app.mount("/media", StaticFiles(directory='media'), name='media')
-
-# Frontend (React Admin Panel) - mount at /admin
-admin_static_dir = Path("frontend-react/dist")
-if admin_static_dir.exists():
-    app.mount("/admin", StaticFiles(directory=str(admin_static_dir), html=True), name="admin_frontend")
-
-# Client Shop - serve client.html at /client
-from fastapi.responses import FileResponse
-
-@app.get("/client")
-async def serve_client():
-    client_file = admin_static_dir / "client.html"
-    if client_file.exists():
-        return FileResponse(client_file)
-    raise HTTPException(status_code=404, detail="Client page not found")
 
 # Include all routers with /api prefix
 app.include_router(shop_product_router, prefix="/api")

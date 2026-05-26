@@ -49,13 +49,6 @@ Thumbs.db
 # Media files (uploaded)
 media/
 
-# Node modules
-node_modules/
-frontend-react/node_modules/
-
-# Build outputs
-frontend-react/dist/
-
 # Database
 *.db
 *.sqlite

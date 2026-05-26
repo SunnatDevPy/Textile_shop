@@ -4,14 +4,88 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="774920ee-63fe-49ac-b413-a3f7c8d0cf31" name="Changes" comment="new project" />
+    <list default="true" id="774920ee-63fe-49ac-b413-a3f7c8d0cf31" name="Changes" comment="new project">
+      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.local.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.local.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/5de3b1b3-4be9-4e8b-a708-a75671fbb8a8.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/5de3b1b3-4be9-4e8b-a708-a75671fbb8a8/storage_v2/_src_/database/postgres.edMnLQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/5de3b1b3-4be9-4e8b-a708-a75671fbb8a8/storage_v2/_src_/database/postgres.edMnLQ/schema/information_schema.FNRwLQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/5de3b1b3-4be9-4e8b-a708-a75671fbb8a8/storage_v2/_src_/database/postgres.edMnLQ/schema/pg_catalog.0S1ZNQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/5de3b1b3-4be9-4e8b-a708-a75671fbb8a8/storage_v2/_src_/database/postgres.edMnLQ/schema/public.abK9xQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/5de3b1b3-4be9-4e8b-a708-a75671fbb8a8/storage_v2/_src_/database/textile.Vad9qw.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/5de3b1b3-4be9-4e8b-a708-a75671fbb8a8/storage_v2/_src_/database/textile.Vad9qw/schema/information_schema.FNRwLQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/5de3b1b3-4be9-4e8b-a708-a75671fbb8a8/storage_v2/_src_/database/textile.Vad9qw/schema/pg_catalog.0S1ZNQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/5de3b1b3-4be9-4e8b-a708-a75671fbb8a8/storage_v2/_src_/database/textile.Vad9qw/schema/public.abK9xQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ab18eb1e-86fb-49cb-9056-633abeb47444.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ab18eb1e-86fb-49cb-9056-633abeb47444/storage_v2/_src_/database/hh_uz.REbqBQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ab18eb1e-86fb-49cb-9056-633abeb47444/storage_v2/_src_/database/hh_uz.REbqBQ/schema/information_schema.FNRwLQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ab18eb1e-86fb-49cb-9056-633abeb47444/storage_v2/_src_/database/hh_uz.REbqBQ/schema/pg_catalog.0S1ZNQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ab18eb1e-86fb-49cb-9056-633abeb47444/storage_v2/_src_/database/hh_uz.REbqBQ/schema/public.abK9xQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ab18eb1e-86fb-49cb-9056-633abeb47444/storage_v2/_src_/database/postgres.edMnLQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ab18eb1e-86fb-49cb-9056-633abeb47444/storage_v2/_src_/database/postgres.edMnLQ/schema/information_schema.FNRwLQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ab18eb1e-86fb-49cb-9056-633abeb47444/storage_v2/_src_/database/postgres.edMnLQ/schema/pg_catalog.0S1ZNQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ab18eb1e-86fb-49cb-9056-633abeb47444/storage_v2/_src_/database/postgres.edMnLQ/schema/public.abK9xQ.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/data_sources_history.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/data_sources_history.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deploy.sh" beforeDir="false" afterPath="$PROJECT_DIR$/deploy.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/Dockerfile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/client.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/eslint.config.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/index.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/nginx.conf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/package.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/public/client-dashboard.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/public/client-dashboard.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/public/client-payments.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/public/client-payments.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/public/favicon.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/public/home.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/public/icons.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/public/legacy-panel.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/public/styles.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/App-old.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/App.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/App.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/assets/hero.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/assets/react.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/assets/vite.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/client.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/components.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/components/Layout.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/contexts/AuthContext.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/index-old.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/index.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/legacyAdmin.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/main.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/pages/ClientShop.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/pages/Dashboard.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/pages/Login.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/pages/Products.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/pages/Warehouse.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/styles/ClientShop.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/styles/Dashboard.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/styles/Layout.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/styles/Login.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/styles/Products.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/src/styles/Warehouse.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend-react/vite.config.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/logs/textile_shop.log" beforeDir="false" afterPath="$PROJECT_DIR$/logs/textile_shop.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/nginx-server.conf" beforeDir="false" afterPath="$PROJECT_DIR$/nginx-server.conf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/rate_limit.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/rate_limit.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="110" />
+    <option name="cachedIndexableFilesCount" value="89" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -33,7 +107,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/SunnatDevPy/Textile_shop.git&quot;,
-    &quot;accountId&quot;: &quot;8f10b937-3eae-4d43-b72b-233a631f0f52&quot;
+    &quot;accountId&quot;: &quot;df376ff0-a3d9-4674-9a26-1661b55a6dfa&quot;
   }
 }</component>
   <component name="McpProjectServerCommands">
@@ -61,6 +135,7 @@
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
     &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
     &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;master&quot;,
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;C:/Users/stalk/FastAPIProject/Textile_shop/fast_routers&quot;,
@@ -98,6 +173,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="RUN_TOOL" value="" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/check_bcrypt_password.py" />
@@ -120,6 +196,7 @@
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="RUN_TOOL" value="" />
       <option name="launchJavascriptDebuger" value="false" />
@@ -134,8 +211,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-PY-253.31033.139" />
-        <option value="bundled-python-sdk-2653e85de345-6d6dccd035ac-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.31033.139" />
+        <option value="bundled-js-predefined-d6986cc7102b-3bd3a6803838-JavaScript-PY-261.22158.340" />
+        <option value="bundled-python-sdk-b63d5a1f7c97-b61e75351b1f-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.22158.340" />
       </set>
     </attachedChunks>
   </component>
@@ -157,6 +234,7 @@
       <workItem from="1777357598087" duration="24076000" />
       <workItem from="1777967552793" duration="1015000" />
       <workItem from="1778009569162" duration="7388000" />
+      <workItem from="1779277862233" duration="1391000" />
     </task>
     <task id="LOCAL-00001" summary="new project">
       <option name="closed" value="true" />

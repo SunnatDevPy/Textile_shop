@@ -29,25 +29,15 @@ fi
 echo "🛑 Eski container'larni to'xtatish..."
 docker-compose down
 
-# 4. Frontend build qilish
-echo "🔨 Frontend build qilish..."
-cd frontend-react
-if [ ! -d "node_modules" ]; then
-    echo "📦 npm install..."
-    npm install
-fi
-npm run build
-cd ..
-
-# 5. Docker image'larni build qilish
+# 4. Docker image'larni build qilish
 echo "🐳 Docker image'larni build qilish..."
 docker-compose build
 
-# 6. Container'larni ishga tushirish
+# 5. Container'larni ishga tushirish
 echo "🚀 Container'larni ishga tushirish..."
 docker-compose up -d
 
-# 7. Statusni tekshirish
+# 6. Statusni tekshirish
 echo ""
 echo "✅ Deploy tugadi!"
 echo ""
@@ -59,9 +49,8 @@ echo "=========================================="
 echo "Foydali URL'lar:"
 echo "=========================================="
 echo "Backend API: http://localhost:8000"
-echo "API Docs: http://localhost:8000/docs"
-echo "Admin Panel: http://localhost:8000/admin"
-echo "Health Check: http://localhost:8000/system/health"
+echo "API Docs (Swagger): http://localhost:8000/api/docs"
+echo "Health Check: http://localhost:8000/api/system/health"
 echo ""
 echo "Loglarni ko'rish:"
 echo "docker-compose logs -f"

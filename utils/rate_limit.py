@@ -87,9 +87,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Skip rate limiting for health checks and static files
-        if request.url.path in ["/system/health", "/system/ready"] or \
-           request.url.path.startswith("/media/") or \
-           request.url.path.startswith("/admin/"):
+        if request.url.path in ["/api/system/health", "/api/system/ready", "/system/health", "/system/ready"] or \
+           request.url.path.startswith("/media/"):
             return await call_next(request)
 
         # Get client IP
