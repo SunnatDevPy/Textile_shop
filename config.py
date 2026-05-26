@@ -61,6 +61,9 @@ class Configuration:
     PAYME_MERCHANT_ID: str = os.getenv('PAYME_MERCHANT_ID', '')
     PAYME_SECRET_KEY: str = os.getenv('PAYME_SECRET_KEY', '')
     PAYME_ENDPOINT: str = os.getenv('PAYME_ENDPOINT', 'https://checkout.paycom.uz')
+    PAYME_RELAX_AMOUNT_UNITS: bool = os.getenv(
+        'PAYME_RELAX_AMOUNT_UNITS', 'false'
+    ).lower() in {'1', 'true', 'yes', 'on'}
     PUBLIC_BASE_URL: str = os.getenv('PUBLIC_BASE_URL', '')
     PAYMENT_CALLBACK_IP_WHITELIST: str = os.getenv('PAYMENT_CALLBACK_IP_WHITELIST', '')
     RATE_LIMIT_PER_MINUTE: int = int(os.getenv('RATE_LIMIT_PER_MINUTE', '120'))

@@ -48,6 +48,13 @@ Authorization: Basic base64(username:password)
 
 **401:** noto‘g‘ri login/parol. **403:** masalan operator `require_admin` bilan himoyalangan joyga urinsa.
 
+### 2.1 Demo super admin bilan 401 chiqsa
+
+1. Swaggerda **`Authorize`** tugmasidan **HTTP Basic** maydonlarida: **`admin`** va oddiy **parol** (masalan `1111`; `ADMIN_PASS` env da **faqat bcrypt hash**, parol yozilmaydi).
+2. **Serverdagi `.env`** da bcrypt hash **uchta blok** uchun ham `$` ichiga `$$`: `$$2b$$12$$pRh...`. Agar `$$12$pRh` deb yozilgan bo‘lsa (uchunchi `$` bitta), Compose **WARN** chiqaradi (`pRh6NEq… variable not set`) va parol ishlamaydi — bu **normal emas**.
+3. Konteynerni `.env` o‘zgargach qayta ko‘tarish kerak (`docker compose up -d`).
+4. Tekshirish: `docker exec <app_container> printenv ADMIN_USERNAME` va `printenv ADMIN_PASS` — **`ADMIN_PASS` qatori `$2b$12$`** bilan boshlanishi kerak (noto‘g‘ri interpolate bo‘lsa boshida `$` yo‘qoladi).
+
 ---
 
 ## 3. Javob formatlari (muhim)
@@ -81,6 +88,8 @@ Masalan **`422`** validatsiya, **`404`**, **`401`**:
 ### 3.4. Payme webhook (`POST /api/payme`)
 
 JSON-RPC **2.0**; xato ham ko‘pincha **`HTTP 200`** + ichida **`error`** (Payme talabi).
+
+**`params.amount`:** rasmiy hujjatda **tiyyinda** (1 so‘m = 100 tiyin). Backend jami: `OrderItem` yig‘indisi **so‘mda** × 100 (**Paycom PHP**: `100 * order.amount == params.amount`). Sandbox **110000** yuborsa, bu **1100 so‘m** to‘lovi; `#5` buyurtmangiz bazada **110 000 so‘m** bo‘lsa, kutiladigan **11 000 000** tiyin — natija xato yoki `allow: false` / `error` juda normal. **Ikki yo‘l:** (1) sandbox test buyurtmasini jami summaga moslang; (2) faqat test uchun `.env` da **`PAYME_RELAX_AMOUNT_UNITS=true`** (qiymatni so‘m bilan ham qabul qilish; **prod'da yo‘lmang**, xavfli).
 
 ---
 

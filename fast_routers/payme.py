@@ -16,7 +16,7 @@ from starlette.responses import JSONResponse
 from config import conf
 from models import Order, PaymentReceipt
 from models.database import db
-from utils.payment_links import get_order_amount_tiyin
+from utils.payment_links import get_order_amount_tiyin, resolve_payme_amount_tiyin
 from utils.response import ok_response
 
 payme_router = APIRouter(prefix='/payme', tags=['Payme'])
@@ -161,8 +161,8 @@ def verify_payme_auth(authorization: Optional[str]) -> bool:
         return False
 
 
-def create_payme_error(code: int, message: str, data: Optional[str] = None):
-    """Payme xatolik qismi"""
+def create_payme_error(code: int, message, data: Optional[str] = None):
+    """Payme xatolik qismi. message — str yoki {\"ru\",\"uz\",\"en\"} multilingual obyekt."""
     error: dict = {
         "code": code,
         "message": message,
@@ -170,6 +170,36 @@ def create_payme_error(code: int, message: str, data: Optional[str] = None):
     if data:
         error["data"] = data
     return {"error": error}
+
+
+class PaymeRpcError(Exception):
+    """Handler ichidagi JSON-RPC xato (Payme uchun data maydoni bilan)."""
+
+    __slots__ = ("code", "message", "data")
+
+    def __init__(self, code: int, message, data: Optional[str] = None):
+        self.code = code
+        self.message = message
+        self.data = data
+
+
+def _amount_mismatch_message(expected: int, got: int) -> dict:
+    """Payme INVALID_ACCOUNT (-31050) uchun multilingual message (sandbox talabi)."""
+    som = expected // 100
+    return {
+        "ru": (
+            f"Сумма не соответствует заказу (ожидается {expected} тийн ≈ {som} сум в базе; "
+            f"получено {got})."
+        ),
+        "uz": (
+            f"Buyurtma summasi mos emas (kutilgan {expected} tiyin ≈ jami {som} so'm; "
+            f"kelgan {got})."
+        ),
+        "en": (
+            f"Amount does not match order (expected {expected} tiyn = order total {som} som; "
+            f"Payme sends amount in tiyn). Got {got}."
+        ),
+    }
 
 
 def auth_failed_json_rpc(request_id) -> dict:
@@ -248,6 +278,12 @@ async def payme_webhook(
             "id": request_id,
             "result": result
         }
+    except PaymeRpcError as e:
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            **create_payme_error(e.code, e.message, e.data),
+        }
     except HTTPException as e:
         return {
             "jsonrpc": "2.0",
@@ -293,10 +329,18 @@ async def check_perform_transaction(params: dict):
         )
 
     expected_amount = await get_order_amount_tiyin(order_id)
-    if amount != expected_amount:
-        raise HTTPException(
-            status_code=PaymeError.INVALID_AMOUNT,
-            detail=f"Amount mismatch: expected {expected_amount}, got {amount}",
+    if (
+        resolve_payme_amount_tiyin(
+            amount,
+            expected_amount,
+            relax_som_equivalent=conf.PAYME_RELAX_AMOUNT_UNITS,
+        )
+        is None
+    ):
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _amount_mismatch_message(expected_amount, amount),
+            data="order_id",
         )
 
     if amount < PAYME_MIN_AMOUNT:
@@ -359,10 +403,16 @@ async def create_transaction(params: dict):
         )
 
     expected_amount = await get_order_amount_tiyin(order_id)
-    if amount != expected_amount:
-        raise HTTPException(
-            status_code=PaymeError.INVALID_AMOUNT,
-            detail=f"Amount mismatch: expected {expected_amount}, got {amount}",
+    canonical_tiyin = resolve_payme_amount_tiyin(
+        amount,
+        expected_amount,
+        relax_som_equivalent=conf.PAYME_RELAX_AMOUNT_UNITS,
+    )
+    if canonical_tiyin is None:
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _amount_mismatch_message(expected_amount, amount),
+            data="order_id",
         )
 
     # Yangi tranzaksiya yaratish
@@ -370,7 +420,7 @@ async def create_transaction(params: dict):
         order_id=order_id,
         payment_system='payme',
         transaction_id=transaction_id,
-        amount=amount,
+        amount=canonical_tiyin,
         state=0,  # Yaratildi
         create_time=time,
         receipt_data=json.dumps(params)

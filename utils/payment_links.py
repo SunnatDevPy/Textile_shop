@@ -63,3 +63,23 @@ async def get_order_amount_sum(order_id: int) -> int:
         select(func.coalesce(func.sum(OrderItem.total), 0)).where(OrderItem.order_id == oid)
     )
     return int(result.scalar() or 0)
+
+
+def resolve_payme_amount_tiyin(
+    amount_rpc: int, expected_tiyin: int, *, relax_som_equivalent: bool
+) -> Optional[int]:
+    """Payme RPC ``amount`` ni saqlash/kontrakt uchun tiyin qiymatiga keltirish.
+
+    Rasmiy: ``amount_rpc == expected_tiyin``.
+    ``relax_som_equivalent``: ``amount_rpc == expected_tiyin // 100`` bo'lsa (faqat test),
+    chekda ``expected_tiyin`` yoziladi (noto'g'ri kichik summa saqlanmasin).
+
+    Mos kelmasa ``None``.
+    """
+    if expected_tiyin <= 0:
+        return None
+    if amount_rpc == expected_tiyin:
+        return expected_tiyin
+    if relax_som_equivalent and expected_tiyin % 100 == 0 and amount_rpc == (expected_tiyin // 100):
+        return expected_tiyin
+    return None
