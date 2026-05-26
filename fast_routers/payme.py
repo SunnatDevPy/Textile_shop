@@ -41,6 +41,54 @@ class PaymeError:
     COULD_NOT_CANCEL = -31007
 
 
+def _parse_payme_order_id(raw) -> int:
+    """Payme account.order_id ko'pincha JSON da string ('3') — DB bigint bilan moslash uchun."""
+    if raw is None or raw == "":
+        raise HTTPException(
+            status_code=PaymeError.INVALID_ACCOUNT,
+            detail="order_id not provided",
+        )
+    if isinstance(raw, bool):
+        raise HTTPException(
+            status_code=PaymeError.INVALID_ACCOUNT,
+            detail="order_id invalid",
+        )
+    try:
+        oid = int(str(raw).strip())
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=PaymeError.INVALID_ACCOUNT,
+            detail="order_id invalid",
+        )
+    if oid < 1:
+        raise HTTPException(
+            status_code=PaymeError.INVALID_ACCOUNT,
+            detail="order_id invalid",
+        )
+    return oid
+
+
+def _parse_payme_amount_tiyin(raw) -> int:
+    """amount tiyinda int bo'lishi kerak (-31001 noto'g'ri miqdor uchun)."""
+    if raw is None:
+        raise HTTPException(
+            status_code=PaymeError.INVALID_AMOUNT,
+            detail="amount not provided",
+        )
+    try:
+        if isinstance(raw, float):
+            if not raw.is_integer():
+                raise ValueError("fractional amount")
+            raw = int(raw)
+        amt = int(raw)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=PaymeError.INVALID_AMOUNT,
+            detail="amount invalid",
+        )
+    return amt
+
+
 def verify_payme_auth(authorization: Optional[str]) -> bool:
     """Payme (Paycom) Basic Auth.
 
@@ -218,15 +266,9 @@ async def check_perform_transaction(params: dict):
     """
     To'lovni amalga oshirish mumkinligini tekshirish
     """
-    amount = params.get('amount')
-    account = params.get('account', {})
-    order_id = account.get('order_id')
-
-    if not order_id:
-        raise HTTPException(
-            status_code=PaymeError.INVALID_ACCOUNT,
-            detail="order_id not provided"
-        )
+    account = params.get('account') or {}
+    order_id = _parse_payme_order_id(account.get('order_id'))
+    amount = _parse_payme_amount_tiyin(params.get('amount'))
 
     # Buyurtmani tekshirish
     order = await Order.get_or_none(order_id)
@@ -236,6 +278,13 @@ async def check_perform_transaction(params: dict):
             detail=f"Order not found: {order_id}"
         )
 
+    payment_val = getattr(order.payment, "value", str(order.payment))
+    if payment_val != Order.Payment.PAYME.value:
+        raise HTTPException(
+            status_code=PaymeError.INVALID_ACCOUNT,
+            detail="Buyurtma Payme to'lovi emas",
+        )
+
     # Buyurtma statusini tekshirish
     if order.status != Order.StatusOrder.NEW.value:
         raise HTTPException(
@@ -243,7 +292,7 @@ async def check_perform_transaction(params: dict):
             detail=f"Order status is not NEW: {order.status}"
         )
 
-    expected_amount = await get_order_amount_tiyin(int(order_id))
+    expected_amount = await get_order_amount_tiyin(order_id)
     if amount != expected_amount:
         raise HTTPException(
             status_code=PaymeError.INVALID_AMOUNT,
@@ -265,9 +314,9 @@ async def create_transaction(params: dict):
     """
     transaction_id = params.get('id')
     time = params.get('time')
-    amount = params.get('amount')
-    account = params.get('account', {})
-    order_id = account.get('order_id')
+    amount = _parse_payme_amount_tiyin(params.get('amount'))
+    account = params.get('account') or {}
+    order_id = _parse_payme_order_id(account.get('order_id'))
 
     # Mavjud tranzaksiyani tekshirish
     existing = await db.execute(
@@ -294,6 +343,26 @@ async def create_transaction(params: dict):
         raise HTTPException(
             status_code=PaymeError.INVALID_ACCOUNT,
             detail=f"Order not found: {order_id}"
+        )
+
+    payment_val = getattr(order.payment, "value", str(order.payment))
+    if payment_val != Order.Payment.PAYME.value:
+        raise HTTPException(
+            status_code=PaymeError.INVALID_ACCOUNT,
+            detail="Buyurtma Payme to'lovi emas",
+        )
+
+    if order.status != Order.StatusOrder.NEW.value:
+        raise HTTPException(
+            status_code=PaymeError.COULD_NOT_PERFORM,
+            detail=f"Order status is not NEW: {order.status}",
+        )
+
+    expected_amount = await get_order_amount_tiyin(order_id)
+    if amount != expected_amount:
+        raise HTTPException(
+            status_code=PaymeError.INVALID_AMOUNT,
+            detail=f"Amount mismatch: expected {expected_amount}, got {amount}",
         )
 
     # Yangi tranzaksiya yaratish
