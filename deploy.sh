@@ -16,13 +16,15 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# 2. .env faylini tekshirish
+# 2. .env — repoda bo'lmaydi; yo'q bo'lsa .env.example dan yaratamiz
 if [ ! -f .env ]; then
-    echo "❌ .env fayli topilmadi!"
-    echo "Iltimos, .env.example'dan nusxa oling va to'ldiring:"
-    echo "cp .env.example .env"
-    echo "nano .env"
-    exit 1
+    if [ ! -f .env.example ]; then
+        echo "❌ .env va .env.example topilmadi!"
+        exit 1
+    fi
+    cp .env.example .env
+    echo "✅ .env yaratildi (.env.example dan nusxa)."
+    echo "⚠️  Iltimos nano .env bilan DB_PASS, SECRET_KEY, ADMIN_*, Payme/Click ni to'ldirib chiqing!"
 fi
 
 # 3. Docker container'larni to'xtatish
