@@ -85,6 +85,16 @@ db.init()
 # ----------------------------- ABSTRACTS ----------------------------------
 class AbstractClass:
     @staticmethod
+    def _coerce_pk(value):
+        """String ID ('5') BIGINT ustun bilan solishtirishda asyncpg xatosini oldini oladi."""
+        if value is None or isinstance(value, bool):
+            return None
+        try:
+            return int(str(value).strip())
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
     async def commit():
         try:
             await db.commit()
@@ -102,9 +112,12 @@ class AbstractClass:
 
     @classmethod
     async def update(cls, id_, **kwargs):
+        pk = cls._coerce_pk(id_)
+        if pk is None:
+            return None
         query = (
             sqlalchemy_update(cls)
-            .where(cls.id == id_)
+            .where(cls.id == pk)
             .values(**kwargs)
             .returning(cls)
         )
@@ -114,7 +127,10 @@ class AbstractClass:
 
     @classmethod
     async def get_or_none(cls, _id: int, *, relationship=None):
-        query = select(cls).where(cls.id == _id)
+        pk = cls._coerce_pk(_id)
+        if pk is None:
+            return None
+        query = select(cls).where(cls.id == pk)
 
         if relationship is not None:
             # relationship может быть одним relationship или списком
@@ -128,7 +144,10 @@ class AbstractClass:
 
     @classmethod
     async def get(cls, _id, *, relationship=None):
-        query = select(cls).where(cls.id == _id)
+        pk = cls._coerce_pk(_id)
+        if pk is None:
+            return None
+        query = select(cls).where(cls.id == pk)
         if relationship:
             query = query.options(selectinload(relationship))
         return (await db.execute(query)).scalar()
@@ -140,7 +159,10 @@ class AbstractClass:
 
     @classmethod
     async def delete(cls, id_):
-        query = sqlalchemy_delete(cls).where(cls.id == id_)
+        pk = cls._coerce_pk(id_)
+        if pk is None:
+            return
+        query = sqlalchemy_delete(cls).where(cls.id == pk)
         await db.execute(query)
         await cls.commit()
 
@@ -176,7 +198,10 @@ class AbstractClass:
 
     @classmethod
     async def get_order_items(cls, order_id):
-        return (await db.execute(select(cls).where(cls.order_id == order_id))).scalars().all()
+        pk = cls._coerce_pk(order_id)
+        if pk is None:
+            return []
+        return (await db.execute(select(cls).where(cls.order_id == pk))).scalars().all()
 
     @classmethod
     async def search(cls, name, category_id=None):

@@ -42,16 +42,24 @@ def build_payme_checkout_url(order_id: int, amount_tiyin: int, return_url: Optio
     return f"{endpoint}/{encoded_params}"
 
 
+def _order_id_int(order_id) -> int:
+    if isinstance(order_id, bool) or order_id is None:
+        raise ValueError("order_id noto'g'ri")
+    return int(str(order_id).strip())
+
+
 async def get_order_amount_tiyin(order_id: int) -> int:
+    oid = _order_id_int(order_id)
     result = await db.execute(
-        select(func.coalesce(func.sum(OrderItem.total), 0)).where(OrderItem.order_id == order_id)
+        select(func.coalesce(func.sum(OrderItem.total), 0)).where(OrderItem.order_id == oid)
     )
     total_sum = int(result.scalar() or 0)
     return total_sum * 100
 
 
 async def get_order_amount_sum(order_id: int) -> int:
+    oid = _order_id_int(order_id)
     result = await db.execute(
-        select(func.coalesce(func.sum(OrderItem.total), 0)).where(OrderItem.order_id == order_id)
+        select(func.coalesce(func.sum(OrderItem.total), 0)).where(OrderItem.order_id == oid)
     )
     return int(result.scalar() or 0)
