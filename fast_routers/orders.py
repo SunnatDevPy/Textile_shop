@@ -440,6 +440,7 @@ async def create_order(request: Request, payload: CreateOrderPayload):
         )
 
     total_sum = sum(int(getattr(oi, "total", 0) or 0) for oi in order_items)
+    await Order.update(order.id, total_sum=total_sum)
     await send_new_order_notification(
         order_id=int(order.id),
         contact=order.contact,

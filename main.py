@@ -56,6 +56,20 @@ async def lifespan(app: FastAPI):
     await db.execute(text("ALTER TYPE statusorder ADD VALUE IF NOT EXISTS 'vozvrat'"))
     # Legacy DBlar uchun min_stock_level ustunini qo'shamiz
     await db.execute(text("ALTER TABLE product_items ADD COLUMN IF NOT EXISTS min_stock_level BIGINT DEFAULT 10"))
+    await db.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_sum BIGINT NOT NULL DEFAULT 0"))
+    await db.execute(
+        text(
+            "UPDATE orders o SET total_sum = COALESCE(("
+            "SELECT SUM(oi.total)::bigint FROM order_items oi WHERE oi.order_id = o.id"
+            "), 0)"
+        )
+    )
+    await db.execute(
+        text(
+            "UPDATE payment_receipts SET state = 2 WHERE payment_system = 'payme' "
+            "AND perform_time IS NOT NULL AND state = 1"
+        )
+    )
     await db.commit()
     logger.info("Database migrations completed")
 

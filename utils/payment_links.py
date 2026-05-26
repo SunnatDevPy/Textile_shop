@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import func, select
 
 from config import conf
-from models import OrderItem
+from models import Order, OrderItem
 from models.database import db
 
 
@@ -50,6 +50,12 @@ def _order_id_int(order_id) -> int:
 
 async def get_order_amount_tiyin(order_id: int) -> int:
     oid = _order_id_int(order_id)
+    order_row = await Order.get_or_none(oid)
+    if order_row is not None:
+        ts = int(getattr(order_row, "total_sum", 0) or 0)
+        if ts > 0:
+            return ts * 100
+
     result = await db.execute(
         select(func.coalesce(func.sum(OrderItem.total), 0)).where(OrderItem.order_id == oid)
     )

@@ -144,6 +144,7 @@ class Order(CreatedBaseModel):
     contact: Mapped[str] = mapped_column(String)
     email_address: Mapped[str] = mapped_column(String, nullable=True)
     postcode_zip: Mapped[int]
+    total_sum: Mapped[int] = mapped_column(BigInteger, default=0)
 
     order_items: Mapped[list['OrderItem']] = relationship('OrderItem', lazy='selectin', back_populates='order')
     payment_receipts: Mapped[list['PaymentReceipt']] = relationship('PaymentReceipt', lazy='selectin', back_populates='order')
@@ -169,7 +170,7 @@ class PaymentReceipt(CreatedBaseModel):
     payment_system: Mapped[str] = mapped_column(String(20))  # payme, click
     transaction_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     amount: Mapped[int] = mapped_column(BIGINT)  # tiyin/kopeykalarda
-    state: Mapped[int] = mapped_column(default=0)  # Payme: -2,-1,0,1,2
+    state: Mapped[int] = mapped_column(default=0)  # Payme DB: kutish 0, to‘langan 2, bekor -2/-1; Click uchun 0/1
     create_time: Mapped[int] = mapped_column(BIGINT, nullable=True)  # Unix timestamp
     perform_time: Mapped[int] = mapped_column(BIGINT, nullable=True)  # Unix timestamp
     cancel_time: Mapped[int] = mapped_column(BIGINT, nullable=True)  # Unix timestamp

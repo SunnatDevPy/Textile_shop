@@ -41,6 +41,37 @@ class PaymeError:
     COULD_NOT_CANCEL = -31007
 
 
+# help.paycom.uz: CreateTransaction natijasida state=1, PerformTransaction dan keyin state=2
+STATE_WAITING_PAY = 1
+STATE_PAY_ACCEPTED = 2
+
+
+def _payme_rpc_tx_state(receipt: PaymentReceipt) -> int:
+    """DB holatini Payme Merchant API `result.state` ga aylantirish."""
+    st = int(receipt.state) if receipt.state is not None else 0
+    if st < 0:
+        return st
+    if receipt.perform_time is not None:
+        return STATE_PAY_ACCEPTED
+    return STATE_WAITING_PAY
+
+
+def _payme_check_perform_time_rpc(rpc_state: int, db_perform_time) -> int:
+    """CheckTransaction / GetStatement: bekor (state < 0) bo‘lsa `perform_time` 0 (sandbox spetsifikatsiyasi)."""
+    if rpc_state < 0:
+        return 0
+    if db_perform_time is None:
+        return 0
+    return int(db_perform_time)
+
+
+def _payme_check_cancel_time_rpc(db_cancel_time) -> int:
+    """Null o‘rniga 0 (timestamp raqam kutilganda)."""
+    if db_cancel_time is None:
+        return 0
+    return int(db_cancel_time)
+
+
 def _parse_payme_order_id(raw) -> int:
     """Payme account.order_id ko'pincha JSON da string ('3') — DB bigint bilan moslash uchun."""
     if raw is None or raw == "":
@@ -369,16 +400,15 @@ async def create_transaction(params: dict):
     existing_receipt = existing.scalar()
 
     if existing_receipt:
-        # Agar tranzaksiya allaqachon mavjud bo'lsa
-        if existing_receipt.state == 1:
+        if existing_receipt.perform_time is not None:
             raise HTTPException(
                 status_code=PaymeError.COULD_NOT_PERFORM,
-                detail="Transaction already performed"
+                detail="Transaction already performed",
             )
         return {
             "create_time": existing_receipt.create_time,
             "transaction": str(existing_receipt.id),
-            "state": existing_receipt.state
+            "state": _payme_rpc_tx_state(existing_receipt),
         }
 
     # Buyurtmani tekshirish
@@ -429,7 +459,7 @@ async def create_transaction(params: dict):
     return {
         "create_time": receipt.create_time,
         "transaction": str(receipt.id),
-        "state": receipt.state
+        "state": STATE_WAITING_PAY,
     }
 
 
@@ -447,32 +477,36 @@ async def perform_transaction(params: dict):
     if not receipt:
         raise HTTPException(
             status_code=PaymeError.TRANSACTION_NOT_FOUND,
-            detail="Transaction not found"
+            detail="Transaction not found",
         )
 
-    if receipt.state == 1:
-        # Allaqachon amalga oshirilgan
+    st_rc = int(receipt.state) if receipt.state is not None else 0
+    if st_rc < 0:
+        raise HTTPException(
+            status_code=PaymeError.COULD_NOT_PERFORM,
+            detail=f"Invalid state: {receipt.state}",
+        )
+
+    if receipt.perform_time is not None:
         return {
             "transaction": str(receipt.id),
             "perform_time": receipt.perform_time,
-            "state": receipt.state
+            "state": STATE_PAY_ACCEPTED,
         }
 
-    if receipt.state != 0:
+    if receipt.cancel_time is not None:
         raise HTTPException(
             status_code=PaymeError.COULD_NOT_PERFORM,
-            detail=f"Invalid state: {receipt.state}"
+            detail=f"Invalid state: {receipt.state}",
         )
 
-    # Tranzaksiyani amalga oshirish
     perform_time = int(datetime.utcnow().timestamp() * 1000)
     await PaymentReceipt.update(
         receipt.id,
-        state=1,
-        perform_time=perform_time
+        state=STATE_PAY_ACCEPTED,
+        perform_time=perform_time,
     )
 
-    # Buyurtma statusini yangilash va stock kamaytirish
     from fast_routers.orders import _deduct_stock_for_order
     from utils.telegram_bot import send_payment_notification
 
@@ -480,21 +514,25 @@ async def perform_transaction(params: dict):
         await _deduct_stock_for_order(receipt.order_id)
         await Order.update(receipt.order_id, status=Order.StatusOrder.PAID.value)
 
-        # Payment notification yuborish
         await send_payment_notification(
             order_id=receipt.order_id,
-            amount=receipt.amount // 100,  # Tiyin -> So'm
-            payment_system='payme'
+            amount=receipt.amount // 100,
+            payment_system="payme",
         )
-    except Exception as e:
-        # Agar stock kamaytirish xato bo'lsa, tranzaksiyani bekor qilish
-        await PaymentReceipt.update(receipt.id, state=-1, cancel_time=perform_time, reason=1)
+    except Exception:
+        await PaymentReceipt.update(
+            receipt.id,
+            state=-1,
+            cancel_time=perform_time,
+            reason=1,
+            perform_time=None,
+        )
         raise
 
     return {
         "transaction": str(receipt.id),
         "perform_time": perform_time,
-        "state": 1
+        "state": STATE_PAY_ACCEPTED,
     }
 
 
@@ -516,43 +554,42 @@ async def cancel_transaction(params: dict):
             detail="Transaction not found"
         )
 
-    if receipt.state == 1:
-        # Amalga oshirilgan tranzaksiyani bekor qilish
+    if receipt.perform_time is not None:
         cancel_time = int(datetime.utcnow().timestamp() * 1000)
         await PaymentReceipt.update(
             receipt.id,
             state=-1,
             cancel_time=cancel_time,
-            reason=reason
+            reason=reason,
         )
 
         return {
             "transaction": str(receipt.id),
             "cancel_time": cancel_time,
-            "state": -1
+            "state": -1,
         }
 
-    if receipt.state == 0:
-        # Yaratilgan tranzaksiyani bekor qilish
-        cancel_time = int(datetime.utcnow().timestamp() * 1000)
-        await PaymentReceipt.update(
-            receipt.id,
-            state=-2,
-            cancel_time=cancel_time,
-            reason=reason
-        )
-
+    st = int(receipt.state) if receipt.state is not None else 0
+    if st < 0:
         return {
             "transaction": str(receipt.id),
-            "cancel_time": cancel_time,
-            "state": -2
+            "cancel_time": receipt.cancel_time,
+            "state": receipt.state,
         }
 
-    # Allaqachon bekor qilingan
+    # Perform qilinmagan (odatda state=0)
+    cancel_time = int(datetime.utcnow().timestamp() * 1000)
+    await PaymentReceipt.update(
+        receipt.id,
+        state=-2,
+        cancel_time=cancel_time,
+        reason=reason,
+    )
+
     return {
         "transaction": str(receipt.id),
-        "cancel_time": receipt.cancel_time,
-        "state": receipt.state
+        "cancel_time": cancel_time,
+        "state": -2,
     }
 
 
@@ -573,14 +610,30 @@ async def check_transaction(params: dict):
             detail="Transaction not found"
         )
 
-    result = {
-        "create_time": receipt.create_time,
-        "perform_time": receipt.perform_time,
-        "cancel_time": receipt.cancel_time,
-        "transaction": str(receipt.id),
-        "state": receipt.state,
-        "reason": receipt.reason
-    }
+    rpc_state = (
+        _payme_rpc_tx_state(receipt)
+        if receipt.payment_system == "payme"
+        else int(receipt.state) if receipt.state is not None else 0
+    )
+
+    if receipt.payment_system == "payme":
+        result = {
+            "create_time": receipt.create_time,
+            "perform_time": _payme_check_perform_time_rpc(rpc_state, receipt.perform_time),
+            "cancel_time": _payme_check_cancel_time_rpc(receipt.cancel_time),
+            "transaction": str(receipt.id),
+            "state": rpc_state,
+            "reason": receipt.reason,
+        }
+    else:
+        result = {
+            "create_time": receipt.create_time,
+            "perform_time": receipt.perform_time,
+            "cancel_time": receipt.cancel_time,
+            "transaction": str(receipt.id),
+            "state": rpc_state,
+            "reason": receipt.reason,
+        }
 
     return result
 
@@ -603,19 +656,22 @@ async def get_statement(params: dict):
 
     transactions = []
     for receipt in receipts:
-        transactions.append({
-            "id": receipt.transaction_id,
-            "time": receipt.create_time,
-            "amount": receipt.amount,
-            "account": {
-                "order_id": receipt.order_id
-            },
-            "create_time": receipt.create_time,
-            "perform_time": receipt.perform_time,
-            "cancel_time": receipt.cancel_time,
-            "transaction": str(receipt.id),
-            "state": receipt.state,
-            "reason": receipt.reason
-        })
+        rpc_st = _payme_rpc_tx_state(receipt)
+        transactions.append(
+            {
+                "id": receipt.transaction_id,
+                "time": receipt.create_time,
+                "amount": receipt.amount,
+                "account": {
+                    "order_id": receipt.order_id,
+                },
+                "create_time": receipt.create_time,
+                "perform_time": _payme_check_perform_time_rpc(rpc_st, receipt.perform_time),
+                "cancel_time": _payme_check_cancel_time_rpc(receipt.cancel_time),
+                "transaction": str(receipt.id),
+                "state": rpc_st,
+                "reason": receipt.reason,
+            }
+        )
 
     return {"transactions": transactions}
