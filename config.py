@@ -85,6 +85,17 @@ def _payme_checkperform_busy_default() -> bool:
     return 'test.paycom' in endpoint
 
 
+def _payme_reset_cancelled_receipt_on_create() -> bool:
+    """Cancel qilingandan keyin bir xil id bilan Create trxni bazada qayta 'ochish'.
+
+    Prod va Payme sandboxning ko'p bloklari uchun **False** bo'lishi kerak (Perform -1/-2 testlari).
+    Agar boshqa sandbox ssenarisida kerak bo'lsa `.env` da `true` qiling."""
+    raw = os.getenv('PAYME_RESET_CANCELLED_RECEIPT_ON_CREATE')
+    if raw is None or str(raw).strip() == '':
+        return False
+    return str(raw).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
 @dataclass
 class Configuration:
     """All in one configuration's class"""
@@ -98,6 +109,8 @@ class Configuration:
     CLICK_MERCHANT_USER_ID: str = os.getenv('CLICK_MERCHANT_USER_ID', '')
     PAYME_MERCHANT_ID: str = os.getenv('PAYME_MERCHANT_ID', '')
     PAYME_SECRET_KEY: str = os.getenv('PAYME_SECRET_KEY', '')
+    # ChangePassword uchun: bir necha worker/protsess bo'lsa kalit RAMda emas, shu yo'lga yoziladi (sandbox).
+    PAYME_SECRET_RUNTIME_FILE: str = os.getenv('PAYME_SECRET_RUNTIME_FILE', '')
     PAYME_ENDPOINT: str = os.getenv('PAYME_ENDPOINT', 'https://checkout.paycom.uz')
     PAYME_RELAX_AMOUNT_UNITS: bool = _payme_relax_amount_units_default()
     PAYME_ACCOUNT_REJECT_EXTRA_KEYS: bool = _payme_account_reject_extra_keys_default()
@@ -105,6 +118,7 @@ class Configuration:
     # Bo'sh — barcha buyurtma id lari Payme uchun ruxsat (prod). Sandbox: "noto'g'ri akkaunt"
     # testlari uchun CSV, masalan "5" (faqat order_id shu ro'yxatda bo'lsa ishlaydi).
     PAYME_ALLOW_ORDER_IDS: str = os.getenv('PAYME_ALLOW_ORDER_IDS', '')
+    PAYME_RESET_CANCELLED_RECEIPT_ON_CREATE: bool = _payme_reset_cancelled_receipt_on_create()
     PUBLIC_BASE_URL: str = os.getenv('PUBLIC_BASE_URL', '')
     PAYMENT_CALLBACK_IP_WHITELIST: str = os.getenv('PAYMENT_CALLBACK_IP_WHITELIST', '')
     RATE_LIMIT_PER_MINUTE: int = int(os.getenv('RATE_LIMIT_PER_MINUTE', '120'))

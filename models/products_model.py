@@ -170,7 +170,7 @@ class PaymentReceipt(CreatedBaseModel):
     payment_system: Mapped[str] = mapped_column(String(20))  # payme, click
     transaction_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     amount: Mapped[int] = mapped_column(BIGINT)  # tiyin/kopeykalarda
-    state: Mapped[int] = mapped_column(default=0)  # Payme DB: kutish 0, to‘langan 2, bekor -2/-1; Click uchun 0/1
+    state: Mapped[int] = mapped_column(default=0)  # Payme DB ichki: 0 kutish, 2 perform, -2=bekor (perform oldin), -1=bekor (perform keyin,yoki rollback)
     create_time: Mapped[int] = mapped_column(BIGINT, nullable=True)  # Unix timestamp
     perform_time: Mapped[int] = mapped_column(BIGINT, nullable=True)  # Unix timestamp
     cancel_time: Mapped[int] = mapped_column(BIGINT, nullable=True)  # Unix timestamp

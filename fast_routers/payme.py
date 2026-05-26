@@ -5,6 +5,7 @@ import hashlib
 import json
 import secrets
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request, Header
@@ -23,12 +24,55 @@ payme_router = APIRouter(prefix='/payme', tags=['Payme'])
 
 # Payme sozlamalari - config'dan olinadi
 PAYME_MERCHANT_ID = conf.PAYME_MERCHANT_ID
-PAYME_SECRET_KEY = conf.PAYME_SECRET_KEY
 PAYME_MIN_AMOUNT = 100  # Minimal summa (tiyin)
 PAYME_MAX_AMOUNT = 100000000  # Maksimal summa (tiyin)
 
 # Payme Merchant API: account — faqat shu kalitlar (prod); testda qo'shimcha kalit sandbox xatosi.
 _PAYME_ACCOUNT_ALLOWED_KEYS = frozenset({"order_id"})
+
+# ChangePassword sandbox: merchant kaliti ish jarayonida `.env` o'zgarmasligi uchun RAM override.
+_payme_secret_runtime_override: Optional[str] = None
+
+
+def _payme_secret_runtime_file_path() -> Optional[Path]:
+    raw = (getattr(conf, "PAYME_SECRET_RUNTIME_FILE", None) or "").strip()
+    if not raw:
+        return None
+    return Path(raw)
+
+
+def _read_payme_secret_runtime_file() -> Optional[str]:
+    p = _payme_secret_runtime_file_path()
+    if not p or not p.is_file():
+        return None
+    try:
+        text = p.read_text(encoding="utf-8").strip()
+        return text or None
+    except OSError:
+        return None
+
+
+def _persist_payme_secret_runtime_file(secret: str) -> None:
+    """Ommaviy (birdan ortiq worker) uchun: ChangePassword kalitini faylga yozish."""
+    p = _payme_secret_runtime_file_path()
+    if not p:
+        return
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_name(p.name + ".tmp")
+        tmp.write_text(secret, encoding="utf-8")
+        tmp.replace(p)
+    except OSError:
+        pass
+
+
+def _effective_payme_secret() -> str:
+    if _payme_secret_runtime_override is not None:
+        return _payme_secret_runtime_override
+    sf = _read_payme_secret_runtime_file()
+    if sf is not None:
+        return sf
+    return (conf.PAYME_SECRET_KEY or "").strip()
 
 
 class PaymeError:
@@ -51,11 +95,29 @@ STATE_WAITING_PAY = 1
 STATE_PAY_ACCEPTED = 2
 
 
+def _payme_cancel_rpc_state(receipt: PaymentReceipt) -> int:
+    """DB bekor kodini Payme Merchant API `Cancel` / `Check` `result.state` ga.
+
+    Payme sandbox: **1 (создана)** bekor → Check **-1**; **2 (завершена)** bekor → Check **-2**.
+
+    DB ichki: **-2** = perform oldin bekor; **-1** + `perform_time` = to‘langanidan keyin bekor;
+    **-1** + `perform_time` yo‘q = perform xatolik rollback.
+    """
+    st = int(receipt.state) if receipt.state is not None else 0
+    if st == -2:
+        return -1
+    if st == -1:
+        if receipt.perform_time is not None:
+            return -2
+        return -1
+    return st
+
+
 def _payme_rpc_tx_state(receipt: PaymentReceipt) -> int:
     """DB holatini Payme Merchant API `result.state` ga aylantirish."""
     st = int(receipt.state) if receipt.state is not None else 0
     if st < 0:
-        return st
+        return _payme_cancel_rpc_state(receipt)
     if receipt.perform_time is not None:
         return STATE_PAY_ACCEPTED
     return STATE_WAITING_PAY
@@ -164,6 +226,30 @@ def _payme_account_busy_payme_message(order_id: int) -> dict:
         "ru": f"По заказу уже создана транзакция Payme (ожидается проведение или отмена): {order_id}.",
         "uz": f"Bu buyurtma bo'yicha Payme tranzaksiyasi allaqachon yaratilgan: {order_id}.",
         "en": f"A Payme transaction is already in progress for this order: {order_id}.",
+    }
+
+
+def _payme_transaction_not_found_payme_message() -> dict:
+    return {
+        "ru": "Транзакция не найдена.",
+        "uz": "Tranzaksiya topilmadi.",
+        "en": "Transaction not found.",
+    }
+
+
+def _payme_perform_cannot_execute_message() -> dict:
+    return {
+        "ru": "Транзакцию невозможно провести (отменена или недоступна).",
+        "uz": "Tranzaksiya bajarilmaydi (bekor yoki mavjud emas).",
+        "en": "Cannot perform this transaction (cancelled or unavailable).",
+    }
+
+
+def _payme_create_duplicate_after_cancel_message() -> dict:
+    return {
+        "ru": "Транзакция отменена. Повторное создание с тем же id недоступно.",
+        "uz": "Tranzaksiya bekor qilingan. Bir xil id bilan qayta Create qilinmaydi.",
+        "en": "Transaction was cancelled. Cannot create again with the same id.",
     }
 
 
@@ -294,7 +380,8 @@ def verify_payme_auth(authorization: Optional[str]) -> bool:
     if not authorization:
         return False
 
-    if not (PAYME_SECRET_KEY or "").strip():
+    eff = _effective_payme_secret()
+    if not eff:
         return False
 
     try:
@@ -310,7 +397,7 @@ def verify_payme_auth(authorization: Optional[str]) -> bool:
         username = parts[0].strip()
 
         merchant_id = (PAYME_MERCHANT_ID or '').strip()
-        secret = PAYME_SECRET_KEY.strip()
+        secret = eff
 
         def _normalize_candidates(rest: str) -> list[str]:
             """Sandbox ba'zan Paycom:Uzcard:LICENCE_KEY kabili yuboradi — bir necha variant bilan solishtiramiz."""
@@ -490,6 +577,7 @@ async def payme_webhook(
         'CancelTransaction': cancel_transaction,
         'CheckTransaction': check_transaction,
         'GetStatement': get_statement,
+        'ChangePassword': change_password,
     }
 
     handler = handlers.get(method)
@@ -610,7 +698,10 @@ async def create_transaction(params: dict):
 
     # Mavjud tranzaksiyani tekshirish
     existing = await db.execute(
-        select(PaymentReceipt).where(PaymentReceipt.transaction_id == transaction_id)
+        select(PaymentReceipt).where(
+            PaymentReceipt.transaction_id == transaction_id,
+            PaymentReceipt.payment_system == "payme",
+        )
     )
     existing_receipt = existing.scalar()
 
@@ -622,8 +713,13 @@ async def create_transaction(params: dict):
             )
         db_st = int(existing_receipt.state) if existing_receipt.state is not None else 0
         if db_st < 0:
-            # Payme sandbox bitta transaction_id bilan ketma-ket stsenariylar; bekor qilingan yozuvni
-            # qayta Create da "yaratildi" holatiga qaytaramiz (prod da id takrorlanmaydi).
+            if not conf.PAYME_RESET_CANCELLED_RECEIPT_ON_CREATE:
+                raise PaymeRpcError(
+                    PaymeError.COULD_NOT_PERFORM,
+                    _payme_create_duplicate_after_cancel_message(),
+                    data="id",
+                )
+            # Sandbox opt-in: bekor yozuvni qayta "kutmoqda" holatiga (faqat kerak bo'lsa PAYME_RESET_...).
             order = await Order.get_or_none(order_id)
             if not order:
                 raise PaymeRpcError(
@@ -740,21 +836,27 @@ async def perform_transaction(params: dict):
     transaction_id = params.get('id')
 
     receipt_query = await db.execute(
-        select(PaymentReceipt).where(PaymentReceipt.transaction_id == transaction_id)
+        select(PaymentReceipt).where(
+            PaymentReceipt.transaction_id == transaction_id,
+            PaymentReceipt.payment_system == "payme",
+        )
     )
     receipt = receipt_query.scalar()
 
     if not receipt:
-        raise HTTPException(
-            status_code=PaymeError.TRANSACTION_NOT_FOUND,
-            detail="Transaction not found",
+        raise PaymeRpcError(
+            PaymeError.TRANSACTION_NOT_FOUND,
+            _payme_transaction_not_found_payme_message(),
+            data="id",
         )
 
     st_rc = int(receipt.state) if receipt.state is not None else 0
-    if st_rc < 0:
-        raise HTTPException(
-            status_code=PaymeError.COULD_NOT_PERFORM,
-            detail=f"Invalid state: {receipt.state}",
+
+    if st_rc < 0 or receipt.cancel_time is not None:
+        raise PaymeRpcError(
+            PaymeError.COULD_NOT_PERFORM,
+            _payme_perform_cannot_execute_message(),
+            data="id",
         )
 
     if receipt.perform_time is not None:
@@ -763,12 +865,6 @@ async def perform_transaction(params: dict):
             "perform_time": receipt.perform_time,
             "state": STATE_PAY_ACCEPTED,
         }
-
-    if receipt.cancel_time is not None:
-        raise HTTPException(
-            status_code=PaymeError.COULD_NOT_PERFORM,
-            detail=f"Invalid state: {receipt.state}",
-        )
 
     perform_time = int(datetime.utcnow().timestamp() * 1000)
     await PaymentReceipt.update(
@@ -806,6 +902,67 @@ async def perform_transaction(params: dict):
     }
 
 
+async def change_password(params: dict):
+    """
+    Payme Merchant API: kiosk kaliti o'zgaradi (sandbox / spetsifikatsiya).
+    Basic Auth'dagi parol — joriy kalit; params.password — yangi kalit.
+    """
+    global _payme_secret_runtime_override
+
+    raw = params.get("password")
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        raise PaymeRpcError(
+            PaymeError.INVALID_JSON_RPC,
+            {
+                "ru": "Параметр password не указан.",
+                "uz": "password parametri berilmagan.",
+                "en": "The password parameter is required.",
+            },
+            data="password",
+        )
+    if isinstance(raw, bool):
+        raise PaymeRpcError(
+            PaymeError.INVALID_JSON_RPC,
+            {
+                "ru": "Неверный формат password.",
+                "uz": "password formati noto'g'ri.",
+                "en": "Invalid password parameter type.",
+            },
+            data="password",
+        )
+    new_pwd = str(raw).strip()
+    if len(new_pwd) < 8:
+        raise PaymeRpcError(
+            PaymeError.INTERNAL_ERROR,
+            {
+                "ru": "Пароль слишком короткий.",
+                "uz": "Parol juda qisqa.",
+                "en": "Password is too short.",
+            },
+            data="password",
+        )
+
+    cur = _effective_payme_secret()
+    if (
+        cur
+        and len(new_pwd) == len(cur)
+        and secrets.compare_digest(new_pwd, cur)
+    ):
+        raise PaymeRpcError(
+            PaymeError.INTERNAL_ERROR,
+            {
+                "ru": "Новый пароль совпадает с текущим.",
+                "uz": "Yangi parol joriy bilan bir xil.",
+                "en": "New password must differ from the current secret.",
+            },
+            data="password",
+        )
+
+    _payme_secret_runtime_override = new_pwd
+    _persist_payme_secret_runtime_file(new_pwd)
+    return {}
+
+
 async def cancel_transaction(params: dict):
     """
     Tranzaksiyani bekor qilish
@@ -814,14 +971,18 @@ async def cancel_transaction(params: dict):
     reason = params.get('reason')
 
     receipt_query = await db.execute(
-        select(PaymentReceipt).where(PaymentReceipt.transaction_id == transaction_id)
+        select(PaymentReceipt).where(
+            PaymentReceipt.transaction_id == transaction_id,
+            PaymentReceipt.payment_system == "payme",
+        )
     )
     receipt = receipt_query.scalar()
 
     if not receipt:
-        raise HTTPException(
-            status_code=PaymeError.TRANSACTION_NOT_FOUND,
-            detail="Transaction not found"
+        raise PaymeRpcError(
+            PaymeError.TRANSACTION_NOT_FOUND,
+            _payme_transaction_not_found_payme_message(),
+            data="id",
         )
 
     st = int(receipt.state) if receipt.state is not None else 0
@@ -833,7 +994,7 @@ async def cancel_transaction(params: dict):
         return {
             "transaction": str(receipt.id),
             "cancel_time": int(receipt.cancel_time or 0),
-            "state": st,
+            "state": _payme_cancel_rpc_state(receipt),
         }
 
     if receipt.perform_time is not None:
@@ -848,7 +1009,7 @@ async def cancel_transaction(params: dict):
         return {
             "transaction": str(receipt.id),
             "cancel_time": cancel_time,
-            "state": -1,
+            "state": -2,
         }
 
     # Perform qilinmagan (odatda state=0)
@@ -863,7 +1024,7 @@ async def cancel_transaction(params: dict):
     return {
         "transaction": str(receipt.id),
         "cancel_time": cancel_time,
-        "state": -2,
+        "state": -1,
     }
 
 
@@ -874,14 +1035,18 @@ async def check_transaction(params: dict):
     transaction_id = params.get('id')
 
     receipt_query = await db.execute(
-        select(PaymentReceipt).where(PaymentReceipt.transaction_id == transaction_id)
+        select(PaymentReceipt).where(
+            PaymentReceipt.transaction_id == transaction_id,
+            PaymentReceipt.payment_system == "payme",
+        )
     )
     receipt = receipt_query.scalar()
 
     if not receipt:
-        raise HTTPException(
-            status_code=PaymeError.TRANSACTION_NOT_FOUND,
-            detail="Transaction not found"
+        raise PaymeRpcError(
+            PaymeError.TRANSACTION_NOT_FOUND,
+            _payme_transaction_not_found_payme_message(),
+            data="id",
         )
 
     rpc_state = (
