@@ -576,14 +576,17 @@ async def _payme_load_and_validate_order(order_id: int) -> Order:
 
 
 async def _payme_canonical_amount_for_order(order_id: int, amount: int) -> int:
-    """Summa mosligi; jami 0 bo'lsa INVALID_ACCOUNT (sandbox «неверный счёт»)."""
+    """Summa mosligi; bazada jami 0 bo'lsa Payme RPC summasidan foydalanish (sandbox)."""
+    if amount < PAYME_MIN_AMOUNT:
+        raise PaymeRpcError(
+            PaymeError.INVALID_AMOUNT,
+            _payme_amount_too_small_message(amount),
+            data="amount",
+        )
+
     expected_amount = await get_order_amount_tiyin(order_id)
     if expected_amount <= 0:
-        raise PaymeRpcError(
-            PaymeError.INVALID_ACCOUNT,
-            _payme_account_not_payable_message(order_id),
-            data="order_id",
-        )
+        return amount
 
     canonical_tiyin = resolve_payme_amount_tiyin(
         amount,
@@ -597,14 +600,18 @@ async def _payme_canonical_amount_for_order(order_id: int, amount: int) -> int:
             data="amount",
         )
 
-    if amount < PAYME_MIN_AMOUNT:
-        raise PaymeRpcError(
-            PaymeError.INVALID_AMOUNT,
-            _payme_amount_too_small_message(amount),
-            data="amount",
-        )
-
     return canonical_tiyin
+
+
+async def _payme_sync_order_for_payment(order: Order, order_id: int, canonical_tiyin: int) -> None:
+    """Payme trx oldidan buyurtma summasi va to'lov turini moslashtirish."""
+    updates: dict = {}
+    if payment_method_value(order) != Order.Payment.PAYME.value:
+        updates["payment"] = Order.Payment.PAYME.value
+    if int(getattr(order, "total_sum", 0) or 0) <= 0:
+        updates["total_sum"] = canonical_tiyin // 100
+    if updates:
+        await Order.update(order_id, **updates)
 
 
 def auth_failed_json_rpc(request_id) -> dict:
@@ -798,8 +805,15 @@ async def create_transaction(params: dict):
 
     order = await _payme_load_and_validate_order(order_id)
     canonical_tiyin = await _payme_canonical_amount_for_order(order_id, amount)
-    if payment_method_value(order) == Order.Payment.PENDING.value:
-        await Order.update(order_id, payment=Order.Payment.PAYME.value)
+
+    if await _payme_has_waiting_payme_receipt(order_id):
+        raise PaymeRpcError(
+            PaymeError.ACCOUNT_BUSY_TRANSACTION,
+            _payme_account_busy_payme_message(order_id),
+            data="order_id",
+        )
+
+    await _payme_sync_order_for_payment(order, order_id, canonical_tiyin)
 
     # Yangi tranzaksiya yaratish
     receipt = await PaymentReceipt.create(

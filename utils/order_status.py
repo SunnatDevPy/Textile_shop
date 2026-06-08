@@ -56,10 +56,11 @@ def is_order_payable(order: Order) -> bool:
 
 
 def is_payme_payment_method(order: Order) -> bool:
-    """Payme checkout: payme yoki hali tanlanmagan (yangi oqim)."""
+    """Payme webhook: payme, tanlanmagan yoki click (sandbox/checkout)."""
     return payment_method_value(order) in (
         Order.Payment.PAYME.value,
         Order.Payment.PENDING.value,
+        Order.Payment.CLICK.value,
     )
 
 

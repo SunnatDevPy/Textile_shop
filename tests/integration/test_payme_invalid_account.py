@@ -33,7 +33,7 @@ def _rpc(method: str, params: dict, req_id: int = 1) -> dict:
     }
 
 
-def test_check_perform_zero_sum_returns_invalid_account(monkeypatch):
+def test_check_perform_zero_sum_uses_rpc_amount(monkeypatch):
     from fast_routers import payme as payme_router
 
     async def fake_get_or_none(order_id):
@@ -42,13 +42,14 @@ def test_check_perform_zero_sum_returns_invalid_account(monkeypatch):
             payment=SimpleNamespace(value="payme"),
             payment_status=SimpleNamespace(value="to'lanmadi"),
             status=SimpleNamespace(value="yangi"),
+            total_sum=0,
         )
 
     async def fake_amount_tiyin(_order_id):
         return 0
 
     async def fake_busy(_order_id):
-        return True
+        return False
 
     monkeypatch.setattr(payme_router.Order, "get_or_none", fake_get_or_none)
     monkeypatch.setattr(payme_router, "get_order_amount_tiyin", fake_amount_tiyin)
@@ -60,17 +61,17 @@ def test_check_perform_zero_sum_returns_invalid_account(monkeypatch):
             headers=_payme_headers(),
             json=_rpc(
                 "CheckPerformTransaction",
-                {"amount": 22222, "account": {"order_id": "5"}},
+                {"amount": 200000, "account": {"order_id": "1"}},
             ),
         )
 
-    body = response.json()
-    assert body["error"]["code"] == payme_router.PaymeError.INVALID_ACCOUNT
-    assert body["error"]["data"] == "order_id"
+    assert response.json().get("result") == {"allow": True}
 
 
-def test_create_transaction_zero_sum_returns_invalid_account(monkeypatch):
+def test_create_transaction_zero_sum_creates_receipt(monkeypatch):
     from fast_routers import payme as payme_router
+
+    created: dict = {}
 
     async def fake_get_or_none(order_id):
         return SimpleNamespace(
@@ -78,10 +79,21 @@ def test_create_transaction_zero_sum_returns_invalid_account(monkeypatch):
             payment=SimpleNamespace(value="payme"),
             payment_status=SimpleNamespace(value="to'lanmadi"),
             status=SimpleNamespace(value="yangi"),
+            total_sum=0,
         )
 
     async def fake_amount_tiyin(_order_id):
         return 0
+
+    async def fake_busy(_order_id):
+        return False
+
+    async def fake_update(_order_id, **kwargs):
+        created["order_update"] = kwargs
+
+    async def fake_create(**kwargs):
+        created["receipt"] = kwargs
+        return SimpleNamespace(id=99, create_time=kwargs.get("create_time"))
 
     async def fake_execute(_query):
         class _R:
@@ -91,7 +103,10 @@ def test_create_transaction_zero_sum_returns_invalid_account(monkeypatch):
         return _R()
 
     monkeypatch.setattr(payme_router.Order, "get_or_none", fake_get_or_none)
+    monkeypatch.setattr(payme_router.Order, "update", fake_update)
+    monkeypatch.setattr(payme_router.PaymentReceipt, "create", fake_create)
     monkeypatch.setattr(payme_router, "get_order_amount_tiyin", fake_amount_tiyin)
+    monkeypatch.setattr(payme_router, "_payme_has_waiting_payme_receipt", fake_busy)
     monkeypatch.setattr(payme_router.db, "execute", fake_execute)
 
     with TestClient(app) as client:
@@ -101,14 +116,15 @@ def test_create_transaction_zero_sum_returns_invalid_account(monkeypatch):
             json=_rpc(
                 "CreateTransaction",
                 {
-                    "id": "6a26bca9d3ee342047107cba",
-                    "time": 1780923561677,
-                    "amount": 22222,
-                    "account": {"order_id": "5"},
+                    "id": "6a26c422d3ee342047107cda",
+                    "time": 1780925474031,
+                    "amount": 200000,
+                    "account": {"order_id": "1"},
                 },
             ),
         )
 
     body = response.json()
-    assert body["error"]["code"] == payme_router.PaymeError.INVALID_ACCOUNT
-    assert body["error"]["data"] == "order_id"
+    assert body["result"]["state"] == payme_router.STATE_WAITING_PAY
+    assert created["receipt"]["amount"] == 200000
+    assert created["order_update"]["total_sum"] == 2000

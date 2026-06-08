@@ -166,6 +166,49 @@ def test_check_perform_blocked_account_error_in_range(monkeypatch):
     assert response.json()["error"]["data"] == "order_id"
 
 
+def test_create_transaction_busy_account_error_in_range(monkeypatch):
+    from fast_routers import payme as payme_router
+
+    async def fake_get_or_none(order_id):
+        return _awaiting_order(order_id)
+
+    async def fake_amount_tiyin(_order_id):
+        return 200_000
+
+    async def fake_busy(_order_id):
+        return True
+
+    async def fake_execute(_query):
+        class _R:
+            def scalar(self):
+                return None
+
+        return _R()
+
+    monkeypatch.setattr(payme_router.Order, "get_or_none", fake_get_or_none)
+    monkeypatch.setattr(payme_router, "get_order_amount_tiyin", fake_amount_tiyin)
+    monkeypatch.setattr(payme_router, "_payme_has_waiting_payme_receipt", fake_busy)
+    monkeypatch.setattr(payme_router.db, "execute", fake_execute)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/payme",
+            headers=_payme_headers(),
+            json=_rpc(
+                "CreateTransaction",
+                {
+                    "id": "6a26c422d3ee342047107cdb",
+                    "time": 1780925474078,
+                    "amount": 200_000,
+                    "account": {"order_id": "1"},
+                },
+            ),
+        )
+
+    code = response.json()["error"]["code"]
+    assert PAYME_ACCOUNT_ERROR_MIN <= code <= PAYME_ACCOUNT_ERROR_MAX
+
+
 def test_check_perform_not_found_account_error_in_range(monkeypatch):
     from fast_routers import payme as payme_router
 
