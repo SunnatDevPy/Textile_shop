@@ -304,6 +304,86 @@ def _payme_amount_too_small_message(amount: int) -> dict:
     }
 
 
+def _payme_statement_period_missing_message(field: str) -> dict:
+    return {
+        "ru": f"Не указан параметр {field}.",
+        "uz": f"{field} parametri ko'rsatilmagan.",
+        "en": f"Missing required parameter: {field}.",
+    }
+
+
+def _payme_statement_period_invalid_message() -> dict:
+    return {
+        "ru": "Неверный период (from должен быть меньше to).",
+        "uz": "Noto'g'ri davr (from < to bo'lishi kerak).",
+        "en": "Invalid period (from must be less than to).",
+    }
+
+
+def _parse_payme_statement_timestamp(raw, field: str) -> int:
+    if raw is None:
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_statement_period_missing_message(field),
+            data=field,
+        )
+    try:
+        if isinstance(raw, float):
+            if not raw.is_integer():
+                raise ValueError("fractional timestamp")
+            raw = int(raw)
+        return int(raw)
+    except (TypeError, ValueError):
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_statement_period_invalid_message(),
+            data=field,
+        )
+
+
+def _parse_payme_statement_period(params: dict) -> tuple[int, int]:
+    from_time = _parse_payme_statement_timestamp(params.get("from"), "from")
+    to_time = _parse_payme_statement_timestamp(params.get("to"), "to")
+    if from_time >= to_time:
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_statement_period_invalid_message(),
+            data="from",
+        )
+    return from_time, to_time
+
+
+def _payme_statement_account(receipt: PaymentReceipt) -> dict:
+    """CreateTransaction dagi account maydonlari (GetStatement javobi)."""
+    if receipt.receipt_data:
+        try:
+            stored = json.loads(receipt.receipt_data)
+            account = stored.get("account")
+            if isinstance(account, dict) and account:
+                return {k: str(v) if k == "order_id" else v for k, v in account.items()}
+        except (TypeError, ValueError, json.JSONDecodeError):
+            pass
+    return {"order_id": str(receipt.order_id)}
+
+
+def _payme_format_statement_transaction(receipt: PaymentReceipt) -> dict:
+    """Payme GetStatement: from <= time <= to; time = CreateTransaction.params.time."""
+    rpc_st = _payme_rpc_tx_state(receipt)
+    payme_time = int(receipt.create_time or 0)
+    return {
+        "id": receipt.transaction_id,
+        "time": payme_time,
+        "amount": int(receipt.amount),
+        "account": _payme_statement_account(receipt),
+        "create_time": payme_time,
+        "perform_time": _payme_check_perform_time_rpc(rpc_st, receipt.perform_time),
+        "cancel_time": _payme_check_cancel_time_rpc(receipt, rpc_st),
+        "transaction": str(receipt.id),
+        "state": rpc_st,
+        "reason": _payme_check_reason_rpc(receipt, rpc_st),
+    }
+
+
 def _require_payme_account_dict(params: dict) -> dict:
     """JSON-RPC params.account — obyekt bo'lishi kerak (help.paycom.uz: -31050..-31099 + data)."""
     raw = params.get("account")
@@ -762,13 +842,14 @@ async def create_transaction(params: dict):
             PaymentReceipt.payment_system == "payme",
         )
     )
-    existing_receipt = existing.scalar()
+    existing_receipt = existing.scalar_one_or_none()
 
     if existing_receipt:
         if existing_receipt.perform_time is not None:
-            raise HTTPException(
-                status_code=PaymeError.COULD_NOT_PERFORM,
-                detail="Transaction already performed",
+            raise PaymeRpcError(
+                PaymeError.COULD_NOT_PERFORM,
+                _payme_perform_cannot_execute_message(),
+                data="id",
             )
         db_st = int(existing_receipt.state) if existing_receipt.state is not None else 0
         if db_st < 0:
@@ -845,7 +926,7 @@ async def perform_transaction(params: dict):
             PaymentReceipt.payment_system == "payme",
         )
     )
-    receipt = receipt_query.scalar()
+    receipt = receipt_query.scalar_one_or_none()
 
     if not receipt:
         raise PaymeRpcError(
@@ -877,17 +958,32 @@ async def perform_transaction(params: dict):
         perform_time=perform_time,
     )
 
+    from models import OrderItem
     from fast_routers.orders import _deduct_stock_for_order
     from utils.telegram_bot import send_payment_notification
 
     try:
-        await _deduct_stock_for_order(receipt.order_id)
+        if await OrderItem.get_order_items(receipt.order_id):
+            await _deduct_stock_for_order(receipt.order_id)
         await mark_order_payment_paid(receipt.order_id)
 
         await send_payment_notification(
             order_id=receipt.order_id,
             amount=receipt.amount // 100,
             payment_system="payme",
+        )
+    except HTTPException:
+        await PaymentReceipt.update(
+            receipt.id,
+            state=-1,
+            cancel_time=perform_time,
+            reason=1,
+            perform_time=None,
+        )
+        raise PaymeRpcError(
+            PaymeError.COULD_NOT_PERFORM,
+            _payme_perform_cannot_execute_message(),
+            data="id",
         )
     except Exception:
         await PaymentReceipt.update(
@@ -897,7 +993,11 @@ async def perform_transaction(params: dict):
             reason=1,
             perform_time=None,
         )
-        raise
+        raise PaymeRpcError(
+            PaymeError.COULD_NOT_PERFORM,
+            _payme_perform_cannot_execute_message(),
+            data="id",
+        )
 
     return {
         "transaction": str(receipt.id),
@@ -980,7 +1080,7 @@ async def cancel_transaction(params: dict):
             PaymentReceipt.payment_system == "payme",
         )
     )
-    receipt = receipt_query.scalar()
+    receipt = receipt_query.scalar_one_or_none()
 
     if not receipt:
         raise PaymeRpcError(
@@ -1044,7 +1144,7 @@ async def check_transaction(params: dict):
             PaymentReceipt.payment_system == "payme",
         )
     )
-    receipt = receipt_query.scalar()
+    receipt = receipt_query.scalar_one_or_none()
 
     if not receipt:
         raise PaymeRpcError(
@@ -1083,38 +1183,24 @@ async def check_transaction(params: dict):
 
 async def get_statement(params: dict):
     """
-    Belgilangan vaqt oralig'idagi tranzaksiyalar ro'yxati
+    Payme GetStatement: CreateTransaction `time` bo'yicha from <= time <= to (o'sish tartibida).
     """
-    from_time = params.get('from')
-    to_time = params.get('to')
+    from_time, to_time = _parse_payme_statement_period(params)
 
-    query = select(PaymentReceipt).where(
-        PaymentReceipt.payment_system == 'payme',
-        PaymentReceipt.create_time >= from_time,
-        PaymentReceipt.create_time <= to_time
+    query = (
+        select(PaymentReceipt)
+        .where(
+            PaymentReceipt.payment_system == "payme",
+            PaymentReceipt.create_time.is_not(None),
+            PaymentReceipt.create_time >= from_time,
+            PaymentReceipt.create_time <= to_time,
+        )
+        .order_by(PaymentReceipt.create_time.asc())
     )
 
     result = await db.execute(query)
     receipts = result.scalars().all()
 
-    transactions = []
-    for receipt in receipts:
-        rpc_st = _payme_rpc_tx_state(receipt)
-        transactions.append(
-            {
-                "id": receipt.transaction_id,
-                "time": receipt.create_time,
-                "amount": receipt.amount,
-                "account": {
-                    "order_id": receipt.order_id,
-                },
-                "create_time": receipt.create_time,
-                "perform_time": _payme_check_perform_time_rpc(rpc_st, receipt.perform_time),
-                "cancel_time": _payme_check_cancel_time_rpc(receipt, rpc_st),
-                "transaction": str(receipt.id),
-                "state": rpc_st,
-                "reason": _payme_check_reason_rpc(receipt, rpc_st),
-            }
-        )
-
-    return {"transactions": transactions}
+    return {
+        "transactions": [_payme_format_statement_transaction(r) for r in receipts],
+    }
