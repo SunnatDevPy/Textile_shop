@@ -50,6 +50,8 @@ async def get_payment_info(order_id: int):
     from models import OrderItem
     from models.database import db
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from utils.order_serialize import serialize_order_item
 
     order = await Order.get_or_none(order_id)
     if not order:
@@ -59,18 +61,25 @@ async def get_payment_info(order_id: int):
         )
 
     order_items_query = await db.execute(
-        select(OrderItem).where(OrderItem.order_id == order_id)
+        select(OrderItem)
+        .where(OrderItem.order_id == order_id)
+        .options(
+            selectinload(OrderItem.product),
+            selectinload(OrderItem.product_item),
+        )
     )
     order_items = order_items_query.scalars().all()
 
     items_list = []
     for item in order_items:
+        row = serialize_order_item(item)
         items_list.append({
-            'product_id': item.product_id,
-            'product_name': item.product.name_uz if item.product else 'N/A',
-            'quantity': item.count,
-            'price': item.price,
-            'total': item.total
+            'product_id': row['product_id'],
+            'product_name': (row.get('product') or {}).get('name_uz') or 'N/A',
+            'quantity': row['count'],
+            'price': row['price'],
+            'total': row['total'],
+            'product': row.get('product'),
         })
 
     total_amount = sum(item.total for item in order_items)
@@ -91,6 +100,8 @@ async def get_payment_info(order_id: int):
         'amount_tiyin': total_amount * 100,
         'payment_url': payment_url,
         'items': items_list,
+        'order_items': items_list,
+        'products': items_list,
         'customer': {
             'first_name': order.first_name,
             'last_name': order.last_name,

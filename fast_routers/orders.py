@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, desc, func, select, update
 from sqlalchemy.exc import DBAPIError
+from sqlalchemy.orm import selectinload
 from starlette import status
 
 from fast_routers.admin_auth import verify_admin_credentials
@@ -20,10 +21,23 @@ from utils.response import ok_response
 from utils.security import enforce_rate_limit
 from utils.order_payment import start_order_payment
 from utils.order_status import is_order_paid
+from utils.order_serialize import serialize_order, serialize_orders
 from utils.order_totals import sync_order_total_sum
 from utils.telegram_bot import send_new_order_notification, send_order_status_notification, send_low_stock_notification
 
 order_router = APIRouter(prefix='/order', tags=['Orders'])
+
+
+def _order_items_load():
+    return (
+        selectinload(Order.order_items).selectinload(OrderItem.product),
+        selectinload(Order.order_items).selectinload(OrderItem.product_item),
+    )
+
+
+async def _fetch_order_with_items(order_id: int) -> Optional[Order]:
+    query = select(Order).where(Order.id == order_id).options(*_order_items_load())
+    return (await db.execute(query)).scalar_one_or_none()
 
 StaffAuth = Annotated[AdminUser, Depends(verify_admin_credentials)]
 
@@ -162,7 +176,9 @@ class ConfirmPaymentPayload(BaseModel):
 @order_router.get('', name='Orders list', summary="Buyurtmalar ro'yxati (operator/admin)")
 async def list_orders(request: Request, _: StaffAuth):
     enforce_rate_limit(request, scope="order_read")
-    return ok_response(await Order.all())
+    query = select(Order).options(*_order_items_load()).order_by(desc(Order.created_at))
+    rows = (await db.execute(query)).scalars().all()
+    return ok_response(serialize_orders(rows))
 
 
 @order_router.get(
@@ -181,7 +197,7 @@ async def search_orders(
     date_to: Optional[str] = None,
     limit: int = 200,
 ):
-    query = select(Order).order_by(desc(Order.created_at))
+    query = select(Order).options(*_order_items_load()).order_by(desc(Order.created_at))
     criteria = []
     if order_id is not None:
         criteria.append(Order.id == order_id)
@@ -212,15 +228,7 @@ async def search_orders(
     query = query.limit(max(1, min(limit, 1000)))
 
     orders = (await db.execute(query)).scalars().all()
-    return ok_response(orders, meta={"count": len(orders)})
-
-
-@order_router.get('/{order_id}', name='Order detail', summary="Bitta buyurtma tafsiloti (operator/admin)")
-async def get_order(order_id: int, _: StaffAuth):
-    order = await Order.get_or_none(order_id, relationship=Order.order_items)
-    if order is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Buyurtma topilmadi')
-    return ok_response(order)
+    return ok_response(serialize_orders(orders), meta={"count": len(orders)})
 
 
 def _build_order_filters(
@@ -284,7 +292,13 @@ async def admin_table_orders(
     where_clause = and_(*criteria) if criteria else None
 
     count_q = select(func.count(Order.id))
-    data_q = select(Order).order_by(sort_expr).offset((page - 1) * page_size).limit(page_size)
+    data_q = (
+        select(Order)
+        .options(*_order_items_load())
+        .order_by(sort_expr)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     if where_clause is not None:
         count_q = count_q.where(where_clause)
         data_q = data_q.where(where_clause)
@@ -307,7 +321,7 @@ async def admin_table_orders(
             chips.append({"key": key, "value": str(value)})
 
     return ok_response(
-        rows,
+        serialize_orders(rows),
         meta={
             "page": page,
             "page_size": page_size,
@@ -362,6 +376,14 @@ async def export_orders_csv(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="orders_export.csv"'},
     )
+
+
+@order_router.get('/{order_id}', name='Order detail', summary="Bitta buyurtma tafsiloti (operator/admin)")
+async def get_order(order_id: int, _: StaffAuth):
+    order = await _fetch_order_with_items(order_id)
+    if order is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Buyurtma topilmadi')
+    return ok_response(serialize_order(order))
 
 
 @order_router.post('', name='Create order', summary="Yangi buyurtma yaratish")
@@ -438,6 +460,7 @@ async def create_order(request: Request, payload: CreateOrderPayload):
             )
             order_items.append(oi)
     except DBAPIError:
+        await Order.delete(order.id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Buyurtma qatorlarini saqlashda xatolik",
@@ -451,14 +474,13 @@ async def create_order(request: Request, payload: CreateOrderPayload):
         items_count=len(order_items),
     )
 
-    return ok_response({
-        'order_id': order.id,
-        'status': _status_value(order.status),
-        'payment_status': Order.PaymentStatus.UNPAID.value,
-        'payment': Order.Payment.PENDING.value,
-        'order_items': order_items,
-        'total_sum': total_sum,
-    })
+    saved = await _fetch_order_with_items(order.id)
+    payload_out = serialize_order(saved) if saved is not None else {
+        "order_id": order.id,
+        "total_sum": total_sum,
+    }
+    payload_out["order_id"] = order.id
+    return ok_response(payload_out)
 
 
 @order_router.post('/pay', name='Start order payment', summary="To'lov turini tanlash va to'lovga yo'naltirish")

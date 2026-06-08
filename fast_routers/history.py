@@ -4,10 +4,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import and_, desc, func, select
+from sqlalchemy.orm import selectinload
 
 from fast_routers.admin_auth import verify_admin_credentials
 from models import AdminUser, AuditLog, Category, Order, OrderItem, Product, ProductItems
 from models.database import db
+from utils.order_serialize import serialize_orders
 from utils.response import ok_response
 from utils.security import enforce_rate_limit
 
@@ -50,7 +52,14 @@ async def orders_history(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sana formati noto'g'ri (ISO kerak)")
 
-    query = select(Order).order_by(desc(Order.created_at))
+    query = (
+        select(Order)
+        .options(
+            selectinload(Order.order_items).selectinload(OrderItem.product),
+            selectinload(Order.order_items).selectinload(OrderItem.product_item),
+        )
+        .order_by(desc(Order.created_at))
+    )
     criteria = []
     if dt_from:
         criteria.append(Order.created_at >= dt_from)
@@ -60,7 +69,7 @@ async def orders_history(
         query = query.where(and_(*criteria))
     query = query.limit(limit)
     rows = (await db.execute(query)).scalars().all()
-    return ok_response(rows, meta={"count": len(rows)})
+    return ok_response(serialize_orders(rows), meta={"count": len(rows)})
 
 
 @history_router.get(
