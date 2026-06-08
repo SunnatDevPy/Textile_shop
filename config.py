@@ -73,7 +73,7 @@ def _payme_account_reject_extra_keys_default() -> bool:
 
 
 def _payme_checkperform_busy_default() -> bool:
-    """Sandbox: boshqa Payme trx yaratilgan hisob uchun CheckPerform rad (-31088).
+    """Sandbox: boshqa Payme trx yaratilgan hisob uchun CheckPerform rad (-31099).
 
     Prod: klientlar CheckPerform ni takrorlay olishi mumkin — odatda o'chiq.
     PAYME_CHECKPERFORM_BUSY_ACCOUNT bo'sh/unset va test.paycom endpoint → yoqiladi.

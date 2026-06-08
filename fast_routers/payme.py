@@ -17,7 +17,14 @@ from starlette.responses import JSONResponse
 from config import conf
 from models import Order, PaymentReceipt
 from models.database import db
-from utils.order_status import is_order_payable, mark_order_payment_paid
+from utils.order_status import (
+    is_order_account_blocked,
+    is_order_payable,
+    is_payme_payment_method,
+    mark_order_payment_paid,
+    order_workflow_status,
+    payment_method_value,
+)
 from utils.payment_links import get_order_amount_tiyin, resolve_payme_amount_tiyin
 from utils.response import ok_response
 
@@ -87,8 +94,9 @@ class PaymeError:
     INVALID_ACCOUNT = -31050
     COULD_NOT_PERFORM = -31008
     COULD_NOT_CANCEL = -31007
-    # Bitta buyurtma bo'yicha Payme trx yaratilgan, Perform/Cancel kutilyapti (sandbox «Обрабатывается»).
-    ACCOUNT_BUSY_TRANSACTION = -31088
+    # Bitta buyurtma bo'yicha faol Payme trx (sandbox «Обрабатывается»).
+    # Payme sandbox faqat -31099 … -31050 oralig'idagi kodlarni qabul qiladi (-31088 emas).
+    ACCOUNT_BUSY_TRANSACTION = -31099
 
 
 # help.paycom.uz: CreateTransaction natijasida state=1, PerformTransaction dan keyin state=2
@@ -210,6 +218,15 @@ def _payme_order_not_payme_message() -> dict:
         "ru": "Заказ недоступен для оплаты через Payme.",
         "uz": "Buyurtma Payme orqali to'lanmaydi.",
         "en": "This order is not payable via Payme.",
+    }
+
+
+def _payme_account_not_payable_message(order_id: int) -> dict:
+    """Jami summa 0 yoki hisob to'lov uchun yaroqsiz (-31050..-31099)."""
+    return {
+        "ru": f"Неверные параметры аккаунта (заказ {order_id} недоступен для оплаты).",
+        "uz": f"Hesob parametrlari noto'g'ri (buyurtma {order_id} to'lov uchun yaroqsiz).",
+        "en": f"Invalid account parameters (order {order_id} is not payable).",
     }
 
 
@@ -519,6 +536,77 @@ def _amount_mismatch_message(expected: int, got: int) -> dict:
     }
 
 
+async def _payme_get_order_or_raise(order_id: int) -> Order:
+    """«Не существует» — buyurtma topilmasa INVALID_ACCOUNT."""
+    order = await Order.get_or_none(order_id)
+    if not order:
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_order_not_found_message(order_id),
+            data="order_id",
+        )
+    return order
+
+
+async def _payme_assert_account_open(order: Order, order_id: int) -> None:
+    """«Заблокирован» — to'langan yoki bekor qilingan."""
+    if is_order_account_blocked(order):
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_account_blocked_status_message(order_workflow_status(order)),
+            data="order_id",
+        )
+
+
+async def _payme_assert_payme_payment(order: Order) -> None:
+    if not is_payme_payment_method(order):
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_order_not_payme_message(),
+            data="order_id",
+        )
+
+
+async def _payme_load_and_validate_order(order_id: int) -> Order:
+    """Buyurtma mavjudligi va Payme to'lovi uchun yaroqliligi."""
+    order = await _payme_get_order_or_raise(order_id)
+    await _payme_assert_payme_payment(order)
+    await _payme_assert_account_open(order, order_id)
+    return order
+
+
+async def _payme_canonical_amount_for_order(order_id: int, amount: int) -> int:
+    """Summa mosligi; jami 0 bo'lsa INVALID_ACCOUNT (sandbox «неверный счёт»)."""
+    expected_amount = await get_order_amount_tiyin(order_id)
+    if expected_amount <= 0:
+        raise PaymeRpcError(
+            PaymeError.INVALID_ACCOUNT,
+            _payme_account_not_payable_message(order_id),
+            data="order_id",
+        )
+
+    canonical_tiyin = resolve_payme_amount_tiyin(
+        amount,
+        expected_amount,
+        relax_som_equivalent=conf.PAYME_RELAX_AMOUNT_UNITS,
+    )
+    if canonical_tiyin is None:
+        raise PaymeRpcError(
+            PaymeError.INVALID_AMOUNT,
+            _amount_mismatch_message(expected_amount, amount),
+            data="amount",
+        )
+
+    if amount < PAYME_MIN_AMOUNT:
+        raise PaymeRpcError(
+            PaymeError.INVALID_AMOUNT,
+            _payme_amount_too_small_message(amount),
+            data="amount",
+        )
+
+    return canonical_tiyin
+
+
 def auth_failed_json_rpc(request_id) -> dict:
     """HTTP 401 o'rniga Payme spetsifikatsiyasi: JSON-RPC + 200 (sandbox kutilishi)."""
     return {
@@ -618,7 +706,12 @@ async def payme_webhook(
 
 async def check_perform_transaction(params: dict):
     """
-    To'lovni amalga oshirish mumkinligini tekshirish
+    To'lovni amalga oshirish mumkinligini tekshirish.
+
+    Payme sandbox hisob holatlari:
+    - Ожидает оплаты → allow: true
+    - Обрабатывается → -31099 … -31050 (faol trx)
+    - Заблокирован / Не существует → -31099 … -31050
     """
     account = _require_payme_account_dict(params)
     _validate_payme_account_keyset(account)
@@ -626,29 +719,10 @@ async def check_perform_transaction(params: dict):
     _payme_require_order_allowed(order_id)
     amount = _parse_payme_amount_tiyin(params.get('amount'))
 
-    # Buyurtmani tekshirish
-    order = await Order.get_or_none(order_id)
-    if not order:
-        raise PaymeRpcError(
-            PaymeError.INVALID_ACCOUNT,
-            _payme_order_not_found_message(order_id),
-            data="order_id",
-        )
-
-    payment_val = getattr(order.payment, "value", str(order.payment))
-    if payment_val != Order.Payment.PAYME.value:
-        raise PaymeRpcError(
-            PaymeError.INVALID_ACCOUNT,
-            _payme_order_not_payme_message(),
-            data="order_id",
-        )
-
-    if not is_order_payable(order):
-        raise PaymeRpcError(
-            PaymeError.INVALID_ACCOUNT,
-            _payme_account_blocked_status_message(str(order.status)),
-            data="order_id",
-        )
+    order = await _payme_get_order_or_raise(order_id)
+    await _payme_assert_payme_payment(order)
+    await _payme_assert_account_open(order, order_id)
+    await _payme_canonical_amount_for_order(order_id, amount)
 
     if conf.PAYME_CHECKPERFORM_BUSY_ACCOUNT and await _payme_has_waiting_payme_receipt(
         order_id
@@ -657,28 +731,6 @@ async def check_perform_transaction(params: dict):
             PaymeError.ACCOUNT_BUSY_TRANSACTION,
             _payme_account_busy_payme_message(order_id),
             data="order_id",
-        )
-
-    expected_amount = await get_order_amount_tiyin(order_id)
-    if (
-        resolve_payme_amount_tiyin(
-            amount,
-            expected_amount,
-            relax_som_equivalent=conf.PAYME_RELAX_AMOUNT_UNITS,
-        )
-        is None
-    ):
-        raise PaymeRpcError(
-            PaymeError.INVALID_AMOUNT,
-            _amount_mismatch_message(expected_amount, amount),
-            data="amount",
-        )
-
-    if amount < PAYME_MIN_AMOUNT:
-        raise PaymeRpcError(
-            PaymeError.INVALID_AMOUNT,
-            _payme_amount_too_small_message(amount),
-            data="amount",
         )
 
     return {"allow": True}
@@ -720,38 +772,8 @@ async def create_transaction(params: dict):
                     data="id",
                 )
             # Sandbox opt-in: bekor yozuvni qayta "kutmoqda" holatiga (faqat kerak bo'lsa PAYME_RESET_...).
-            order = await Order.get_or_none(order_id)
-            if not order:
-                raise PaymeRpcError(
-                    PaymeError.INVALID_ACCOUNT,
-                    _payme_order_not_found_message(order_id),
-                    data="order_id",
-                )
-            payment_val = getattr(order.payment, "value", str(order.payment))
-            if payment_val != Order.Payment.PAYME.value:
-                raise PaymeRpcError(
-                    PaymeError.INVALID_ACCOUNT,
-                    _payme_order_not_payme_message(),
-                    data="order_id",
-                )
-            if not is_order_payable(order):
-                raise PaymeRpcError(
-                    PaymeError.INVALID_ACCOUNT,
-                    _payme_account_blocked_status_message(str(order.status)),
-                    data="order_id",
-                )
-            expected_amount = await get_order_amount_tiyin(order_id)
-            canonical_tiyin = resolve_payme_amount_tiyin(
-                amount,
-                expected_amount,
-                relax_som_equivalent=conf.PAYME_RELAX_AMOUNT_UNITS,
-            )
-            if canonical_tiyin is None:
-                raise PaymeRpcError(
-                    PaymeError.INVALID_AMOUNT,
-                    _amount_mismatch_message(expected_amount, amount),
-                    data="amount",
-                )
+            await _payme_load_and_validate_order(order_id)
+            canonical_tiyin = await _payme_canonical_amount_for_order(order_id, amount)
             await PaymentReceipt.update(
                 existing_receipt.id,
                 order_id=order_id,
@@ -774,42 +796,10 @@ async def create_transaction(params: dict):
             "state": STATE_WAITING_PAY,
         }
 
-    # Buyurtmani tekshirish
-    order = await Order.get_or_none(order_id)
-    if not order:
-        raise PaymeRpcError(
-            PaymeError.INVALID_ACCOUNT,
-            _payme_order_not_found_message(order_id),
-            data="order_id",
-        )
-
-    payment_val = getattr(order.payment, "value", str(order.payment))
-    if payment_val != Order.Payment.PAYME.value:
-        raise PaymeRpcError(
-            PaymeError.INVALID_ACCOUNT,
-            _payme_order_not_payme_message(),
-            data="order_id",
-        )
-
-    if not is_order_payable(order):
-        raise PaymeRpcError(
-            PaymeError.INVALID_ACCOUNT,
-            _payme_account_blocked_status_message(str(order.status)),
-            data="order_id",
-        )
-
-    expected_amount = await get_order_amount_tiyin(order_id)
-    canonical_tiyin = resolve_payme_amount_tiyin(
-        amount,
-        expected_amount,
-        relax_som_equivalent=conf.PAYME_RELAX_AMOUNT_UNITS,
-    )
-    if canonical_tiyin is None:
-        raise PaymeRpcError(
-            PaymeError.INVALID_AMOUNT,
-            _amount_mismatch_message(expected_amount, amount),
-            data="amount",
-        )
+    order = await _payme_load_and_validate_order(order_id)
+    canonical_tiyin = await _payme_canonical_amount_for_order(order_id, amount)
+    if payment_method_value(order) == Order.Payment.PENDING.value:
+        await Order.update(order_id, payment=Order.Payment.PAYME.value)
 
     # Yangi tranzaksiya yaratish
     receipt = await PaymentReceipt.create(
