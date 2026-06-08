@@ -8,6 +8,7 @@ from starlette import status
 from config import conf
 from models import Order
 from utils.order_status import is_order_payable, payment_status_value
+from utils.order_totals import sync_order_total_sum
 from utils.payment_links import (
     build_click_checkout_url,
     build_payme_checkout_url,
@@ -51,6 +52,9 @@ async def start_order_payment(order_id: int, payment: str) -> dict[str, Any]:
         )
 
     await Order.update(order_id, payment=pay)
+
+    if int(getattr(order, "total_sum", 0) or 0) < 1:
+        await sync_order_total_sum(order_id)
 
     total_sum = await get_order_amount_sum(order_id)
     if total_sum < 1:

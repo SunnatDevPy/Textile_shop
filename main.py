@@ -80,9 +80,13 @@ async def lifespan(app: FastAPI):
     await db.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_sum BIGINT NOT NULL DEFAULT 0"))
     await db.execute(
         text(
-            "UPDATE orders o SET total_sum = COALESCE(("
-            "SELECT SUM(oi.total)::bigint FROM order_items oi WHERE oi.order_id = o.id"
-            "), 0)"
+            "UPDATE orders o SET total_sum = sub.s "
+            "FROM ("
+            "  SELECT oi.order_id, COALESCE(SUM(oi.total), 0)::bigint AS s "
+            "  FROM order_items oi GROUP BY oi.order_id"
+            ") sub "
+            "WHERE o.id = sub.order_id "
+            "AND (o.total_sum = 0 OR o.total_sum IS DISTINCT FROM sub.s)"
         )
     )
     await db.execute(

@@ -20,6 +20,7 @@ from utils.response import ok_response
 from utils.security import enforce_rate_limit
 from utils.order_payment import start_order_payment
 from utils.order_status import is_order_paid
+from utils.order_totals import sync_order_total_sum
 from utils.telegram_bot import send_new_order_notification, send_order_status_notification, send_low_stock_notification
 
 order_router = APIRouter(prefix='/order', tags=['Orders'])
@@ -374,6 +375,8 @@ async def create_order(request: Request, payload: CreateOrderPayload):
             detail="Kamida bitta mahsulot qatori kerak",
         )
 
+    line_rows: list[tuple] = []
+    total_sum = 0
     for line in payload.items:
         pi = await ProductItems.get_or_none(line.product_item_id)
         if pi is None or pi.product_id != line.product_id:
@@ -387,6 +390,15 @@ async def create_order(request: Request, payload: CreateOrderPayload):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Mahsulot mavjud emas yoki o'chirilgan: {line.product_id}",
             )
+        price = int(product.price or 0)
+        if price < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Mahsulot narxi noto'g'ri: product_id={line.product_id}",
+            )
+        line_total = price * line.count
+        total_sum += line_total
+        line_rows.append((line, price, line_total))
 
     try:
         order = await Order.create(
@@ -403,6 +415,7 @@ async def create_order(request: Request, payload: CreateOrderPayload):
             contact=payload.contact,
             email_address=payload.email_address or payload.gmail,
             postcode_zip=payload.postcode_zip,
+            total_sum=total_sum,
         )
     except DBAPIError:
         raise HTTPException(
@@ -412,9 +425,7 @@ async def create_order(request: Request, payload: CreateOrderPayload):
 
     order_items = []
     try:
-        for line in payload.items:
-            product = await Product.get_or_none(line.product_id)
-            price = product.price
+        for line, price, line_total in line_rows:
             oi = await OrderItem.create(
                 product_id=line.product_id,
                 product_item_id=line.product_item_id,
@@ -423,7 +434,7 @@ async def create_order(request: Request, payload: CreateOrderPayload):
                 volume=line.count,
                 unit='dona',
                 price=price,
-                total=price * line.count,
+                total=line_total,
             )
             order_items.append(oi)
     except DBAPIError:
@@ -432,8 +443,7 @@ async def create_order(request: Request, payload: CreateOrderPayload):
             detail="Buyurtma qatorlarini saqlashda xatolik",
         )
 
-    total_sum = sum(int(getattr(oi, "total", 0) or 0) for oi in order_items)
-    await Order.update(order.id, total_sum=total_sum)
+    total_sum = await sync_order_total_sum(order.id)
     await send_new_order_notification(
         order_id=int(order.id),
         contact=order.contact,

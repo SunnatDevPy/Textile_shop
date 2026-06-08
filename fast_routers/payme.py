@@ -17,6 +17,7 @@ from starlette.responses import JSONResponse
 from config import conf
 from models import Order, PaymentReceipt
 from models.database import db
+from utils.order_totals import sync_order_total_sum
 from utils.order_status import (
     is_order_account_blocked,
     is_order_payable,
@@ -605,13 +606,12 @@ async def _payme_canonical_amount_for_order(order_id: int, amount: int) -> int:
 
 async def _payme_sync_order_for_payment(order: Order, order_id: int, canonical_tiyin: int) -> None:
     """Payme trx oldidan buyurtma summasi va to'lov turini moslashtirish."""
-    updates: dict = {}
     if payment_method_value(order) != Order.Payment.PAYME.value:
-        updates["payment"] = Order.Payment.PAYME.value
+        await Order.update(order_id, payment=Order.Payment.PAYME.value)
     if int(getattr(order, "total_sum", 0) or 0) <= 0:
-        updates["total_sum"] = canonical_tiyin // 100
-    if updates:
-        await Order.update(order_id, **updates)
+        items_total = await sync_order_total_sum(order_id)
+        if items_total <= 0:
+            await Order.update(order_id, total_sum=canonical_tiyin // 100)
 
 
 def auth_failed_json_rpc(request_id) -> dict:

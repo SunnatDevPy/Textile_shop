@@ -4,6 +4,7 @@ from sqlalchemy import delete as sqlalchemy_delete, text
 from fast_routers.admin_auth import verify_super_admin_credentials
 from models import Category, Collection, Color, Order, OrderItem, Product, ProductDetail, ProductItems, ProductPhoto, Size
 from models.database import db
+from utils.order_totals import sync_order_total_sum
 from utils.response import ok_response
 
 system_router = APIRouter(prefix="/system", tags=["System"])
@@ -179,6 +180,7 @@ async def seed_fake_data(
         item = product_items[(i - 1) % len(product_items)]
         product = products[(i - 1) % len(products)]
         count = (i % 3) + 1
+        line_total = int(product.price) * count
         await OrderItem.create(
             product_id=product.id,
             product_item_id=item.id,
@@ -187,9 +189,10 @@ async def seed_fake_data(
             volume=count,
             unit="dona",
             price=product.price,
-            total=product.price * count,
+            total=line_total,
         )
         created["order_items"] += 1
+        await sync_order_total_sum(order.id)
 
     await db.commit()
     return ok_response(
