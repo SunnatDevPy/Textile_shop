@@ -11,6 +11,7 @@ from utils.audit import write_audit_log
 from utils.notifications import send_order_status_email
 from utils.response import ok_response
 from utils.security import enforce_ip_whitelist, enforce_rate_limit, verify_hmac_signature
+from utils.order_status import is_order_paid
 from utils.telegram_bot import send_order_status_notification
 
 # DEPRECATED: Bu endpointlar asosiy /api/payme va /api/click/* bilan takrorlangan.
@@ -55,17 +56,22 @@ async def _deduct_stock_for_order(order_id: int) -> None:
             )
 
 
-async def _mark_order_as_paid(order: Order, next_status: str = Order.StatusOrder.PAID.value):
+async def _mark_order_as_paid(order: Order, next_status: str = Order.StatusOrder.IS_PROCESS.value):
     current = _status_value(order.status)
-    paid_statuses = {Order.StatusOrder.PAID.value, Order.StatusOrder.IS_PROCESS.value}
 
-    if current in paid_statuses:
-        return {"ok": True, "already_paid": True, "order_id": order.id, "status": current}
+    if is_order_paid(order):
+        return {
+            "ok": True,
+            "already_paid": True,
+            "order_id": order.id,
+            "status": current,
+            "payment_status": Order.PaymentStatus.PAID.value,
+        }
 
-    if current != Order.StatusOrder.NEW.value:
+    if current == Order.StatusOrder.CANCELLED.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bu statusda to'lovni tasdiqlab bo'lmaydi: {current}",
+            detail="Bekor qilingan buyurtma uchun to'lovni tasdiqlab bo'lmaydi",
         )
 
     try:
@@ -73,7 +79,10 @@ async def _mark_order_as_paid(order: Order, next_status: str = Order.StatusOrder
         await db.execute(
             update(Order)
             .where(Order.id == order.id)
-            .values(status=next_status)
+            .values(
+                status=next_status,
+                payment_status=Order.PaymentStatus.PAID.value,
+            )
         )
         await db.commit()
         await send_order_status_email(

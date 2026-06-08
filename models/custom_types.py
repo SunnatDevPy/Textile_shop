@@ -1,51 +1,39 @@
-import os
-from datetime import datetime
-from pathlib import Path
 from typing import Any, Optional
 
-from PIL import Image, UnidentifiedImageError
+from PIL import UnidentifiedImageError
 from fastapi_storages import StorageImage
 from fastapi_storages.exceptions import ValidationException
 from fastapi_storages.integrations.sqlalchemy import ImageType
 from sqlalchemy import Dialect
 
+from utils.image_compress import compress_upload_file
+
 
 class CustomImageType(ImageType):
+    """Rasm yuklashda avtomatik siqish va o'lchamni cheklash."""
 
-    def process_bind_param(self, value: Any, dialect: Dialect) -> Optional[str]:
-        if value is None:
-            return value
-        if len(value.file.read(1)) != 1:
-            return None
-
+    def save(self, value: Any) -> str:
+        value.file.seek(0)
         try:
-            image_file = Image.open(value.file)
-            image_file.verify()
+            compressed, out_filename, width, height = compress_upload_file(
+                value.file,
+                value.filename or "image.jpg",
+            )
         except UnidentifiedImageError:
             raise ValidationException("Invalid image file")
 
-        path = datetime.today().strftime(self.storage._path)
-        Path(os.path.join(self.storage.MEDIA_URL, path)).mkdir(parents=True, exist_ok=True)
-
         image = StorageImage(
-            name=os.path.join(path, value.filename),
+            name=self._get_path(out_filename),
             storage=self.storage,
-            height=image_file.height,
-            width=image_file.width,
+            height=height,
+            width=width,
         )
-        image.write(file=value.file)
-
-        image_file.close()
+        image.write(file=compressed)
+        compressed.close()
         value.file.close()
-        return os.path.join(path, value.filename)
+        return image.name
 
     def process_result_value(
-            self, value: Any, dialect: Dialect
+        self, value: Any, dialect: Dialect
     ) -> Optional[StorageImage]:
-        if value is None:
-            return value
-
-        with Image.open(value) as image:
-            return StorageImage(
-                name=value, storage=self.storage, height=image.height, width=image.width
-            )
+        return super().process_result_value(value, dialect)

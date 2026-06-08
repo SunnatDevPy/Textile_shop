@@ -73,6 +73,23 @@ def test_order_search_endpoint(monkeypatch):
     app.dependency_overrides.clear()
 
 
+def test_payment_methods_list_endpoint():
+    with TestClient(app) as client:
+        response = client.get("/api/payments/list")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["ok"] is True
+        methods = body["data"]
+        assert len(methods) == 3
+        assert {item["method"] for item in methods} == {"payme", "click", "cash"}
+        for item in methods:
+            assert "icon" in item
+            assert "status" in item
+            assert isinstance(item["status"], bool)
+        cash = next(item for item in methods if item["method"] == "cash")
+        assert cash["status"] is True
+
+
 def test_click_prepare_endpoint(monkeypatch):
     from fast_routers import payments as payments_router
 

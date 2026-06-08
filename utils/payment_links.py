@@ -42,6 +42,29 @@ def build_payme_checkout_url(order_id: int, amount_tiyin: int, return_url: Optio
     return f"{endpoint}/{encoded_params}"
 
 
+def build_click_checkout_url(order_id: int, amount_sum: int) -> str:
+    service_id = (conf.CLICK_SERVICE_ID or "").strip()
+    merchant_id = (conf.CLICK_MERCHANT_ID or "").strip()
+    merchant_user_id = (conf.CLICK_MERCHANT_USER_ID or "").strip()
+    if not service_id or not merchant_id:
+        raise ValueError("CLICK_SERVICE_ID yoki CLICK_MERCHANT_ID sozlanmagan")
+
+    base = (conf.PUBLIC_BASE_URL or "").strip().rstrip("/")
+    if not base:
+        raise ValueError("PUBLIC_BASE_URL sozlanmagan - to'lov natijasiga qaytish uchun kerak")
+    return_url = f"{base}/order/{order_id}/success"
+
+    return (
+        f"https://my.click.uz/services/pay"
+        f"?service_id={service_id}"
+        f"&merchant_id={merchant_id}"
+        f"&amount={amount_sum}"
+        f"&transaction_param={order_id}"
+        f"&return_url={return_url}"
+        f"&merchant_user_id={merchant_user_id}"
+    )
+
+
 def _order_id_int(order_id) -> int:
     if isinstance(order_id, bool) or order_id is None:
         raise ValueError("order_id noto'g'ri")

@@ -11,7 +11,8 @@ Bu hujjat frontend dasturchisi uchun: **bazaviy URL**, **autentifikatsiya**, **a
 | Parametr | Qiymat |
 |----------|--------|
 | API prefiks | **`/api`** (barcha routerlar shu ostida) |
-| Media fayllar | **`/media/...`** (statik, auth yo‘q) |
+| Media fayllar | **`/media/...`** (mahsulot rasmlari, auth yo‘q) |
+| Statik fayllar | **`/static/...`** (to‘lov ikonkalari va boshqalar, auth yo‘q) |
 | Swagger | **`GET /api/docs`** |
 | ReDoc | **`GET /api/redoc`** |
 | CORS | Loyihada **`allow_origins=["*"]`** — dev/demo uchun mos |
@@ -106,12 +107,49 @@ JSON-RPC **2.0**; xato ham ko‘pincha **`HTTP 200`** + ichida **`error`** (Paym
 | GET | `/api/collections` | — | Kolleksiya ro‘yxati |
 | GET | `/api/color` , `/api/size` | — | Rang / o‘lcham |
 | GET | `/api/banners` | — | Bannerlar |
+| GET | `/api/payments/list` | — | To‘lov usullari ro‘yxati (`method`, `icon`, `status`) |
 
-**Buyurtma yaratish:**
+---
+
+### 4.1. To‘lov usullari ro‘yxati
+
+Checkout sahifasida qaysi to‘lov tugmalari ko‘rinsin:
+
+```http
+GET /api/payments/list
+```
+
+**Javob:**
+
+```json
+{
+  "ok": true,
+  "data": [
+    { "method": "payme", "icon": "https://.../static/payments/payme.svg", "status": true },
+    { "method": "click", "icon": "https://.../static/payments/click.svg", "status": false },
+    { "method": "cash", "icon": "https://.../static/payments/cash.svg", "status": true }
+  ]
+}
+```
+
+- Faqat **`status: true`** bo‘lgan usullarni ko‘rsating.
+- **`method`** qiymati keyingi qadamda `POST /api/order/pay` ga yuboriladi.
+
+---
+
+### 4.2. Buyurtma va to‘lov (ikki bosqich)
+
+```
+1. POST /api/order        → buyurtma yaratiladi (to'lov turi yo'q)
+2. POST /api/order/pay    → order_id + payment → payment_url (payme/click)
+3. window.location        → to'lov sahifasiga yo'naltirish
+```
+
+#### Qadam 1 — Buyurtma yaratish
 
 | POST | Yo‘l | Body (JSON) | Javob |
 |------|------|-------------|--------|
-| ✅ | **`/api/order`** | Pastdagi sxema | **`{ ok, data, ... }`** — `data` ichida asosan **`order_id`**, **`total_sum`**, **`payment`**; agar **`payment === "payme"`** va sozlangan bo‘lsa: **`payment_url`**, **`amount_tiyin`**. |
+| ✅ | **`/api/order`** | Pastdagi sxema | `order_id`, `status: "yangi"`, `payment_status: "to'lanmadi"`, `payment: "tanlanmagan"`, `total_sum` |
 
 **`CreateOrderPayload` (majburiy maydonlar):**
 
@@ -124,7 +162,6 @@ JSON-RPC **2.0**; xato ham ko‘pincha **`HTTP 200`** + ichida **`error`** (Paym
   "town_city": "Toshkent",
   "contact": "+998901234567",
   "postcode_zip": 100000,
-  "payment": "cash",
   "items": [
     {
       "product_id": 1,
@@ -138,19 +175,145 @@ JSON-RPC **2.0**; xato ham ko‘pincha **`HTTP 200`** + ichida **`error`** (Paym
 }
 ```
 
-- **`payment`:** **`"cash"`** | **`"payme"`** | **`"click"`**  
-- **`product_item_id`** — haqiqiy variant (rang/o‘lcham) ID si; frontend **variant tanlashni** berganda mos ID yuboradi.
+> **`payment` maydoni yuborilmaydi** — to‘lov turi keyinroq tanlanadi.
 
-**To‘lov havolalari (kabinet uchun):**
+**Javob misoli:**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "order_id": 42,
+    "status": "yangi",
+    "payment_status": "to'lanmadi",
+    "payment": "tanlanmagan",
+    "total_sum": 110000,
+    "order_items": []
+  }
+}
+```
+
+| Maydon | Ma’nosi |
+|--------|---------|
+| `order_id` | Buyurtma raqami — keyingi qadamda kerak |
+| `status` | Ish jarayoni: **`yangi`**, `jarayonda`, `tayyor`, … |
+| `payment_status` | To‘lov holati: **`to'lanmadi`** yoki **`to'landi`** |
+| `payment` | To‘lov turi: **`tanlanmagan`**, `payme`, `click`, `cash` |
+| `total_sum` | Jami summa **so‘mda** |
+
+- **`product_item_id`** — haqiqiy variant (rang/o‘lcham) ID si.
+
+#### Qadam 2 — To‘lov turini tanlash
+
+Mijoz Payme / Click / Naqd tanlagach:
+
+```http
+POST /api/order/pay
+Content-Type: application/json
+```
+
+```json
+{
+  "order_id": 42,
+  "payment": "payme"
+}
+```
+
+| `payment` | Natija |
+|-----------|--------|
+| `"payme"` | `payment_url` + `amount_tiyin` qaytadi |
+| `"click"` | `payment_url` + `amount` (so‘m) qaytadi |
+| `"cash"` | `payment_url` yo‘q; operator tasdiqlashini kutadi |
+
+**Javob (payme):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "order_id": 42,
+    "payment": "payme",
+    "status": "yangi",
+    "payment_status": "to'lanmadi",
+    "total_sum": 110000,
+    "amount_tiyin": 11000000,
+    "payment_url": "https://checkout.test.paycom.uz/..."
+  }
+}
+```
+
+#### Qadam 3 — To‘lov sahifasiga yo‘naltirish
+
+```javascript
+const API = "https://textile.okach-admin.uz/api";
+
+// 1. To'lov usullari
+const methods = (await fetch(`${API}/payments/list`).then((r) => r.json())).data
+  .filter((m) => m.status);
+
+// 2. Buyurtma
+const order = (await fetch(`${API}/order`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ ...form, items: cart }),
+}).then((r) => r.json())).data;
+
+// 3. To'lov (masalan payme)
+const pay = (await fetch(`${API}/order/pay`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ order_id: order.order_id, payment: "payme" }),
+}).then((r) => r.json())).data;
+
+if (pay.payment_url) window.location.href = pay.payment_url;
+```
+
+---
+
+### 4.3. Buyurtma holati (ikki maydon)
+
+**`status`** — ish jarayoni (yetkazish bosqichlari):
+
+| `status` | Ma’nosi |
+|----------|---------|
+| **`yangi`** | Yangi buyurtma |
+| **`jarayonda`** | Operator ishga oldi |
+| **`tayyor`** | Tayyor |
+| **`yetkazilmoqda`** | Yetkazilmoqda |
+| **`yetkazildi`** | Yetkazildi |
+| **`bekor qilindi`** | Bekor qilindi |
+
+**`payment_status`** — to‘lov holati (alohida):
+
+| `payment_status` | Ma’nosi |
+|------------------|---------|
+| **`to'lanmadi`** | To‘lov hali qilinmagan |
+| **`to'landi`** | Payme/Click/naqd tasdiqlangan |
+
+**Misol:**
+
+| Holat | `status` | `payment_status` |
+|-------|----------|------------------|
+| Buyurtma yaratildi | `yangi` | `to'lanmadi` |
+| Payme to‘landi | `yangi` | `to'landi` |
+| Operator ishga oldi | `jarayonda` | `to'landi` |
+
+---
+
+### 4.4. To‘lov havolalari (ixtiyoriy GET)
+
+`POST /api/order/pay` o‘rniga GET ham ishlatish mumkin (buyurtmada `payment` yangilanadi):
 
 | GET | Yo‘l | Javob |
 |-----|------|--------|
 | | `/api/payment-url/{order_id}/payme` | `{ payment_url, order_id, amount, payment_system: "payme" }` |
 | | `/api/payment-url/{order_id}/click` | `{ payment_url, order_id, amount, payment_system: "click" }` |
-| | `/api/payment-url/{order_id}/payment-info` | Buyurtma + summa + (Payme bo‘lsa) `payment_url` |
+| | `/api/payment-url/{order_id}/payment-info` | Buyurtma + summa (faqat o‘qish) |
 
 **Click** uchun serverda **`PUBLIC_BASE_URL`** to‘ldirilgan bo‘lishi kerak (return URL).  
 **Payme** uchun checkout: `.env` dagi `PAYME_ENDPOINT` (test: `https://checkout.test.paycom.uz`).
+
+> Payme batafsil: **`PAYME_FRONTEND_README.md`**
 
 ---
 
@@ -244,9 +407,12 @@ Javob sarlavhalarida masalan: `X-RateLimit-Limit`, `X-RateLimit-Remaining`. Chek
 ## 10. Frontend uchun qisqa checklist
 
 1. **Baza URL** + **`/api`** prefiksi  
-2. **Do‘kon:** `products`, `categories`, `collections` → **`POST /api/order`**  
-3. **Payme/Click:** `data.order_id` yoki javobdan `order_id`, keyin **`GET /api/payment-url/{id}/payme`** yoki **`.../click`**, javob **`payment_url`** ga `window.location`  
-4. **Admin:** **`Authorization: Basic`** + Swagger’dan forma/content-type tekshirish (ba’zi `multipart/form-data`)  
-5. **Xatolik:** `detail` va `422` uchun `errors` massivi
+2. **Do‘kon:** `products`, `categories`, `collections`  
+3. **To‘lov tugmalari:** **`GET /api/payments/list`** → faqat `status: true`  
+4. **Buyurtma:** **`POST /api/order`** (to‘lov turi **yuborilmaydi**) → `order_id` olish  
+5. **To‘lov:** **`POST /api/order/pay`** — `{ order_id, payment }` → `payment_url` ga `window.location`  
+6. **Success sahifa:** `/order/{order_id}/success` (frontend route)  
+7. **Admin:** **`Authorization: Basic`** + Swagger’dan forma/content-type tekshirish (ba’zi `multipart/form-data`)  
+8. **Xatolik:** `detail` va `422` uchun `errors` massivi
 
 Savol-backend nomuvofiqliklarni kamaytirish uchun har doim **`/api/docs`** bilan tekshirish tavsiya etiladi.

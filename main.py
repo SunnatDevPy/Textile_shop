@@ -32,6 +32,7 @@ from fast_routers.telegram_bot import telegram_router
 from fast_routers.payme import payme_router
 from fast_routers.click import click_router
 from fast_routers.payment_urls import payment_url_router
+from fast_routers.payment_methods import payment_methods_router
 from fast_routers.stock_movements import router as stock_movements_router
 from fast_routers.dashboard import router as dashboard_router
 from fast_routers.alerts import router as alerts_router
@@ -54,6 +55,26 @@ async def lifespan(app: FastAPI):
     await db.execute(text("UPDATE products SET clothing_type = COALESCE(clothing_type, 'erkak')"))
     # Legacy DBlar uchun RETURNED statusini qo'shamiz
     await db.execute(text("ALTER TYPE statusorder ADD VALUE IF NOT EXISTS 'vozvrat'"))
+    await db.execute(text("ALTER TYPE payment ADD VALUE IF NOT EXISTS 'PENDING'"))
+    await db.execute(
+        text(
+            "DO $$ BEGIN CREATE TYPE paymentstatus AS ENUM ('UNPAID', 'PAID'); "
+            "EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
+        )
+    )
+    await db.execute(
+        text(
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status paymentstatus "
+            "NOT NULL DEFAULT 'UNPAID'"
+        )
+    )
+    await db.execute(
+        text(
+            "UPDATE orders SET payment_status = 'PAID' "
+            "WHERE status::text IN ('PAID', 'IS_PROCESS', 'READY', 'IN_PROGRESS', "
+            "'DELIVERED', 'RETURNED', 'vozvrat') AND payment_status = 'UNPAID'"
+        )
+    )
     # Legacy DBlar uchun min_stock_level ustunini qo'shamiz
     await db.execute(text("ALTER TABLE product_items ADD COLUMN IF NOT EXISTS min_stock_level BIGINT DEFAULT 10"))
     await db.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_sum BIGINT NOT NULL DEFAULT 0"))
@@ -113,6 +134,7 @@ app = FastAPI(
 
 # Mount static files BEFORE including routers
 app.mount("/media", StaticFiles(directory='media'), name='media')
+app.mount("/static", StaticFiles(directory='static'), name='static')
 
 # Include all routers with /api prefix
 app.include_router(shop_product_router, prefix="/api")
@@ -128,6 +150,7 @@ app.include_router(size_router, prefix="/api")
 app.include_router(system_router, prefix="/api")
 app.include_router(frontend_router, prefix="/api")
 app.include_router(admin_user_router, prefix="/api")
+app.include_router(payment_methods_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
 app.include_router(excel_router, prefix="/api")
 app.include_router(history_router, prefix="/api")

@@ -11,7 +11,6 @@ from sqlalchemy import and_, desc, func, select, update
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
-from config import conf
 from fast_routers.admin_auth import verify_admin_credentials
 from models import AdminUser, Order, OrderItem, Product, ProductItems
 from models.database import db
@@ -19,7 +18,8 @@ from utils.audit import write_audit_log
 from utils.notifications import send_order_status_email
 from utils.response import ok_response
 from utils.security import enforce_rate_limit
-from utils.payment_links import build_payme_checkout_url, get_order_amount_tiyin
+from utils.order_payment import start_order_payment
+from utils.order_status import is_order_paid
 from utils.telegram_bot import send_new_order_notification, send_order_status_notification, send_low_stock_notification
 
 order_router = APIRouter(prefix='/order', tags=['Orders'])
@@ -141,11 +141,15 @@ class CreateOrderPayload(BaseModel):
     town_city: str
     contact: str
     postcode_zip: int
-    payment: str = Field(..., description="click, payme yoki cash")
     items: list[OrderLineIn]
     email_address: Optional[str] = None
     gmail: Optional[str] = None
     state_county: Optional[str] = None
+
+
+class StartPaymentPayload(BaseModel):
+    order_id: int = Field(..., ge=1)
+    payment: str = Field(..., description="click, payme yoki cash")
 
 
 class ConfirmPaymentPayload(BaseModel):
@@ -361,20 +365,8 @@ async def export_orders_csv(
 
 @order_router.post('', name='Create order', summary="Yangi buyurtma yaratish")
 async def create_order(request: Request, payload: CreateOrderPayload):
+    """Buyurtma yaratiladi; to'lov turi keyinroq POST /api/order/pay orqali tanlanadi."""
     enforce_rate_limit(request, scope="order_create")
-    pay = payload.payment.strip().lower()
-    if pay not in (Order.Payment.CLICK.value, Order.Payment.PAYME.value, Order.Payment.CASH.value):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="To'lov turi faqat 'click', 'payme' yoki 'cash' bo'lishi mumkin",
-        )
-
-    if pay == Order.Payment.CLICK.value:
-        payment_enum = Order.Payment.CLICK
-    elif pay == Order.Payment.PAYME.value:
-        payment_enum = Order.Payment.PAYME
-    else:
-        payment_enum = Order.Payment.CASH
 
     if not payload.items:
         raise HTTPException(
@@ -404,7 +396,8 @@ async def create_order(request: Request, payload: CreateOrderPayload):
             country=payload.country,
             address=payload.address,
             town_city=payload.town_city,
-            payment=payment_enum,
+            payment=Order.Payment.PENDING,
+            payment_status=Order.PaymentStatus.UNPAID,
             status=Order.StatusOrder.NEW,
             state_county=payload.state_county,
             contact=payload.contact,
@@ -448,36 +441,22 @@ async def create_order(request: Request, payload: CreateOrderPayload):
         items_count=len(order_items),
     )
 
-    response_data = {
+    return ok_response({
         'order_id': order.id,
         'status': _status_value(order.status),
-        'payment': pay,
+        'payment_status': Order.PaymentStatus.UNPAID.value,
+        'payment': Order.Payment.PENDING.value,
         'order_items': order_items,
         'total_sum': total_sum,
-    }
+    })
 
-    if payment_enum == Order.Payment.PAYME:
-        if not (conf.PAYME_MERCHANT_ID and conf.PAYME_SECRET_KEY):
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Payme sozlamalari (.env) to'ldirilmagan",
-            )
-        amount_tiyin = await get_order_amount_tiyin(order.id)
-        if amount_tiyin < 100:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Buyurtma summasi Payme uchun juda kichik (min 1 so'm)",
-            )
-        try:
-            response_data['payment_url'] = build_payme_checkout_url(order.id, amount_tiyin)
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=str(exc),
-            ) from exc
-        response_data['amount_tiyin'] = amount_tiyin
 
-    return ok_response(response_data)
+@order_router.post('/pay', name='Start order payment', summary="To'lov turini tanlash va to'lovga yo'naltirish")
+async def start_payment(request: Request, payload: StartPaymentPayload):
+    """Frontend order_id va payment (payme/click/cash) yuboradi; payme/click uchun payment_url qaytadi."""
+    enforce_rate_limit(request, scope="order_create")
+    data = await start_order_payment(payload.order_id, payload.payment)
+    return ok_response(data)
 
 
 @order_router.post('/{order_id}/confirm-payment', name='Confirm payment: status + stock', summary="To'lovni tasdiqlash va stockni kamaytirish (operator/admin)")
@@ -495,21 +474,17 @@ async def confirm_payment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Buyurtma topilmadi')
 
     current = _status_value(order.status)
-    paid_statuses = {
-        Order.StatusOrder.PAID.value,
-        Order.StatusOrder.IS_PROCESS.value,
-    }
 
-    if current in paid_statuses:
-        return {'ok': True, 'already_paid': True, 'order_id': order_id}
+    if is_order_paid(order):
+        return {'ok': True, 'already_paid': True, 'order_id': order_id, 'payment_status': Order.PaymentStatus.PAID.value}
 
-    if current != Order.StatusOrder.NEW.value:
+    if current == Order.StatusOrder.CANCELLED.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bu statusda to'lovni tasdiqlab bo'lmaydi: {current}",
+            detail="Bekor qilingan buyurtma uchun to'lovni tasdiqlab bo'lmaydi",
         )
 
-    next_status = Order.StatusOrder.PAID.value
+    next_status = Order.StatusOrder.IS_PROCESS.value
     if body and body.next_status:
         allowed = {e.value for e in Order.StatusOrder}
         if body.next_status not in allowed:
@@ -525,7 +500,10 @@ async def confirm_payment(
         await db.execute(
             update(Order)
             .where(Order.id == order_id)
-            .values(status=next_status)
+            .values(
+                status=next_status,
+                payment_status=Order.PaymentStatus.PAID.value,
+            )
         )
         await db.commit()
         await write_audit_log(
@@ -551,7 +529,11 @@ async def confirm_payment(
             detail="To'lovni tasdiqlashda xatolik",
         )
 
-    return ok_response({'order_id': order_id, 'status': next_status})
+    return ok_response({
+        'order_id': order_id,
+        'status': next_status,
+        'payment_status': Order.PaymentStatus.PAID.value,
+    })
 
 
 @order_router.patch('/{order_id}/status', name='Update order status (staff)', summary="Buyurtma statusini qo'lda yangilash (operator/admin)")

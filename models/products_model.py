@@ -1,7 +1,7 @@
 from enum import Enum
 
 from fastapi_storages import FileSystemStorage
-from fastapi_storages.integrations.sqlalchemy import ImageType
+from models.custom_types import CustomImageType
 from sqlalchemy import BigInteger, String, VARCHAR, ForeignKey, select, Enum as SqlEnum, BIGINT
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from sqlalchemy_file import ImageField
@@ -112,7 +112,7 @@ class ProductItems(BaseModel):
 
 class ProductPhoto(BaseModel):
     product_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('products.id', ondelete='CASCADE'))
-    photo: Mapped[ImageField] = mapped_column(ImageType(storage=FileSystemStorage('media/')), nullable=True)
+    photo: Mapped[ImageField] = mapped_column(CustomImageType(storage=FileSystemStorage('media/')), nullable=True)
     product: Mapped['Product'] = relationship('Product', back_populates='product_photos')
 
 
@@ -128,9 +128,14 @@ class Order(CreatedBaseModel):
         RETURNED = "vozvrat"
 
     class Payment(str, Enum):
+        PENDING = "tanlanmagan"
         CLICK = "click"
         PAYME = "payme"
         CASH = "cash"
+
+    class PaymentStatus(str, Enum):
+        UNPAID = "to'lanmadi"
+        PAID = "to'landi"
 
     first_name: Mapped[str] = mapped_column(String)
     last_name: Mapped[str] = mapped_column(String)
@@ -138,7 +143,11 @@ class Order(CreatedBaseModel):
     country: Mapped[str] = mapped_column(String)
     address: Mapped[str] = mapped_column(String)
     town_city: Mapped[str] = mapped_column(String)
-    payment: Mapped[str] = mapped_column(SqlEnum(Payment), default=Payment.CLICK.value)
+    payment: Mapped[str] = mapped_column(SqlEnum(Payment), default=Payment.PENDING.value)
+    payment_status: Mapped[str] = mapped_column(
+        SqlEnum(PaymentStatus),
+        default=PaymentStatus.UNPAID.value,
+    )
     status: Mapped[str] = mapped_column(SqlEnum(StatusOrder))
     state_county: Mapped[str] = mapped_column(String, nullable=True)
     contact: Mapped[str] = mapped_column(String)

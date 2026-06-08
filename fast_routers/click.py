@@ -12,6 +12,7 @@ from starlette import status
 from config import conf
 from models import Order, PaymentReceipt
 from models.database import db
+from utils.order_status import is_order_payable, mark_order_payment_paid
 
 click_router = APIRouter(prefix='/click', tags=['Click'])
 
@@ -149,14 +150,13 @@ async def click_prepare(request: ClickPrepareRequest):
             "error_note": "Order not found"
         }
 
-    # Buyurtma statusini tekshirish
-    if order.status != Order.StatusOrder.NEW.value:
+    if not is_order_payable(order):
         return {
             "click_trans_id": request.click_trans_id,
             "merchant_trans_id": request.merchant_trans_id,
             "merchant_prepare_id": 0,
             "error": -4,
-            "error_note": f"Order already paid or cancelled: {order.status}"
+            "error_note": f"Order not payable: {order.status}"
         }
 
     # Mavjud tranzaksiyani tekshirish
@@ -330,7 +330,7 @@ async def click_complete(request: ClickCompleteRequest):
         from utils.telegram_bot import send_payment_notification
 
         await _deduct_stock_for_order(receipt.order_id)
-        await Order.update(receipt.order_id, status=Order.StatusOrder.PAID.value)
+        await mark_order_payment_paid(receipt.order_id)
 
         # Payment notification yuborish
         await send_payment_notification(

@@ -17,6 +17,7 @@ from starlette.responses import JSONResponse
 from config import conf
 from models import Order, PaymentReceipt
 from models.database import db
+from utils.order_status import is_order_payable, mark_order_payment_paid
 from utils.payment_links import get_order_amount_tiyin, resolve_payme_amount_tiyin
 from utils.response import ok_response
 
@@ -642,8 +643,7 @@ async def check_perform_transaction(params: dict):
             data="order_id",
         )
 
-    # Buyurtma statusini tekshirish (sandbox «Заблокирован» — -31008 emas, balki -31050..)
-    if order.status != Order.StatusOrder.NEW.value:
+    if not is_order_payable(order):
         raise PaymeRpcError(
             PaymeError.INVALID_ACCOUNT,
             _payme_account_blocked_status_message(str(order.status)),
@@ -734,7 +734,7 @@ async def create_transaction(params: dict):
                     _payme_order_not_payme_message(),
                     data="order_id",
                 )
-            if order.status != Order.StatusOrder.NEW.value:
+            if not is_order_payable(order):
                 raise PaymeRpcError(
                     PaymeError.INVALID_ACCOUNT,
                     _payme_account_blocked_status_message(str(order.status)),
@@ -791,7 +791,7 @@ async def create_transaction(params: dict):
             data="order_id",
         )
 
-    if order.status != Order.StatusOrder.NEW.value:
+    if not is_order_payable(order):
         raise PaymeRpcError(
             PaymeError.INVALID_ACCOUNT,
             _payme_account_blocked_status_message(str(order.status)),
@@ -878,7 +878,7 @@ async def perform_transaction(params: dict):
 
     try:
         await _deduct_stock_for_order(receipt.order_id)
-        await Order.update(receipt.order_id, status=Order.StatusOrder.PAID.value)
+        await mark_order_payment_paid(receipt.order_id)
 
         await send_payment_notification(
             order_id=receipt.order_id,
