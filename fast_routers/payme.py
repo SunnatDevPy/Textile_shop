@@ -1064,7 +1064,7 @@ async def change_password(params: dict):
 
     _payme_secret_runtime_override = new_pwd
     _persist_payme_secret_runtime_file(new_pwd)
-    return {}
+    return {"success": True}
 
 
 async def cancel_transaction(params: dict):
