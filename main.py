@@ -107,8 +107,15 @@ async def lifespan(app: FastAPI):
         await db.execute(text("CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active)"))
         await db.execute(text("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)"))
         await db.execute(text("CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC)"))
+        await db.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at DESC)")
+        )
         await db.execute(text("CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id)"))
         await db.execute(text("CREATE INDEX IF NOT EXISTS idx_product_items_product_id ON product_items(product_id)"))
+        await db.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_product_items_stock ON product_items(total_count)")
+        )
         await db.commit()
         logger.info("Database indexes created successfully")
     except Exception as e:

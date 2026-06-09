@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, case, desc, func, select
 from sqlalchemy.orm import selectinload
 
 from fast_routers.admin_auth import verify_admin_credentials
@@ -15,6 +15,14 @@ from utils.security import enforce_rate_limit
 
 history_router = APIRouter(prefix="/history", tags=["History"])
 logger = logging.getLogger(__name__)
+
+SOLD_STATUSES = [
+    Order.StatusOrder.PAID.value,
+    Order.StatusOrder.IS_PROCESS.value,
+    Order.StatusOrder.READY.value,
+    Order.StatusOrder.IN_PROGRESS.value,
+    Order.StatusOrder.DELIVERED.value,
+]
 
 
 def _safe_rate(part: int, total: int) -> float:
@@ -161,13 +169,7 @@ async def sales_stats(
         if total_criteria:
             total_orders_query = total_orders_query.where(and_(*total_criteria))
 
-        sold_statuses = [
-            Order.StatusOrder.PAID.value,
-            Order.StatusOrder.IS_PROCESS.value,
-            Order.StatusOrder.READY.value,
-            Order.StatusOrder.IN_PROGRESS.value,
-            Order.StatusOrder.DELIVERED.value,
-        ]
+        sold_statuses = SOLD_STATUSES
 
         sales_query = (
             select(
@@ -296,13 +298,7 @@ async def analytics_v2(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Sana formati noto'g'ri (ISO kerak)")
     try:
-        sold_statuses = [
-            Order.StatusOrder.PAID.value,
-            Order.StatusOrder.IS_PROCESS.value,
-            Order.StatusOrder.READY.value,
-            Order.StatusOrder.IN_PROGRESS.value,
-            Order.StatusOrder.DELIVERED.value,
-        ]
+        sold_statuses = SOLD_STATUSES
 
         base_criteria = []
         if dt_from:
@@ -371,22 +367,16 @@ async def analytics_v2(
             for row in top_rows
         ]
 
-        # 3) Average check (sold orders only)
-        sold_order_totals_q = (
-            select(
-                Order.id.label("order_id"),
-                func.coalesce(func.sum(OrderItem.total), 0).label("order_total"),
-            )
-            .select_from(Order)
-            .join(OrderItem, OrderItem.order_id == Order.id)
-            .where(Order.status.in_(sold_statuses))
-            .group_by(Order.id)
-        )
+        # 3) Average check — orders.total_sum (barcha order_items ni Python ga yuklamasdan)
+        sold_agg_q = select(
+            func.count(Order.id).label("sold_orders_count"),
+            func.coalesce(func.sum(Order.total_sum), 0).label("sold_orders_revenue"),
+        ).select_from(Order).where(Order.status.in_(sold_statuses))
         if base_criteria:
-            sold_order_totals_q = sold_order_totals_q.where(and_(*base_criteria))
-        sold_order_totals_rows = (await db.execute(sold_order_totals_q)).all()
-        sold_orders_count = len(sold_order_totals_rows)
-        sold_orders_revenue = sum(int(r.order_total or 0) for r in sold_order_totals_rows)
+            sold_agg_q = sold_agg_q.where(and_(*base_criteria))
+        sold_agg = (await db.execute(sold_agg_q)).one()
+        sold_orders_count = int(sold_agg.sold_orders_count or 0)
+        sold_orders_revenue = int(sold_agg.sold_orders_revenue or 0)
         avg_check = int(sold_orders_revenue / sold_orders_count) if sold_orders_count else 0
 
         # 3.1) Top categories by revenue
@@ -419,8 +409,8 @@ async def analytics_v2(
             for r in top_categories_rows
         ]
 
-        # 4) LTV (by customer contact)
-        ltv_q = (
+        # 4) LTV — subquery: agregat SQL da, top mijozlar ORDER BY + LIMIT
+        customer_stats = (
             select(
                 Order.contact.label("contact"),
                 func.count(func.distinct(Order.id)).label("orders_count"),
@@ -432,22 +422,43 @@ async def analytics_v2(
             .group_by(Order.contact)
         )
         if base_criteria:
-            ltv_q = ltv_q.where(and_(*base_criteria))
-        ltv_rows = (await db.execute(ltv_q)).all()
-        customers_count = len(ltv_rows)
-        total_ltv_revenue = sum(int(r.revenue or 0) for r in ltv_rows)
+            customer_stats = customer_stats.where(and_(*base_criteria))
+        customer_stats_sq = customer_stats.subquery()
+
+        ltv_agg = (
+            await db.execute(
+                select(
+                    func.count().label("customers_count"),
+                    func.coalesce(func.sum(customer_stats_sq.c.revenue), 0).label("total_revenue"),
+                    func.coalesce(
+                        func.sum(case((customer_stats_sq.c.orders_count > 1, 1), else_=0)),
+                        0,
+                    ).label("repeat_customers"),
+                )
+            )
+        ).one()
+        customers_count = int(ltv_agg.customers_count or 0)
+        total_ltv_revenue = int(ltv_agg.total_revenue or 0)
         avg_ltv = int(total_ltv_revenue / customers_count) if customers_count else 0
+        repeat_customers = int(ltv_agg.repeat_customers or 0)
+
+        ltv_top_rows = (
+            await db.execute(
+                select(customer_stats_sq)
+                .order_by(desc(customer_stats_sq.c.revenue))
+                .limit(top_limit)
+            )
+        ).all()
         top_customers_by_ltv = [
             {
                 "contact": r.contact,
                 "orders_count": int(r.orders_count or 0),
                 "ltv": int(r.revenue or 0),
             }
-            for r in sorted(ltv_rows, key=lambda x: int(x.revenue or 0), reverse=True)[:top_limit]
+            for r in ltv_top_rows
         ]
 
         # 5) Repeat sales (by contact)
-        repeat_customers = sum(1 for r in ltv_rows if int(r.orders_count or 0) > 1)
         repeat_sales = {
             "customers_count": customers_count,
             "repeat_customers_count": int(repeat_customers),
@@ -627,35 +638,50 @@ async def dashboard_stats(
     today_start = datetime(now.year, now.month, now.day)
     week_start = today_start - timedelta(days=today_start.weekday())
 
-    sold_statuses = [
-        Order.StatusOrder.PAID.value,
-        Order.StatusOrder.IS_PROCESS.value,
-        Order.StatusOrder.READY.value,
-        Order.StatusOrder.IN_PROGRESS.value,
-        Order.StatusOrder.DELIVERED.value,
-    ]
+    sold_statuses = SOLD_STATUSES
 
-    async def _sales_between(start_dt: datetime):
-        row = (
-            await db.execute(
-                select(
-                    func.count(func.distinct(Order.id)).label("orders_count"),
-                    func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
-                    func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
-                )
-                .select_from(Order)
-                .join(OrderItem, OrderItem.order_id == Order.id)
-                .where(Order.status.in_(sold_statuses), Order.created_at >= start_dt)
+    # Bugun va hafta sotuvlari — bitta SQL so'rov (2 ta round-trip o'rniga 1)
+    period_sales_row = (
+        await db.execute(
+            select(
+                func.count(func.distinct(case((Order.created_at >= today_start, Order.id), else_=None))).label(
+                    "today_orders"
+                ),
+                func.coalesce(
+                    func.sum(case((Order.created_at >= today_start, OrderItem.count), else_=0)),
+                    0,
+                ).label("today_items"),
+                func.coalesce(
+                    func.sum(case((Order.created_at >= today_start, OrderItem.total), else_=0)),
+                    0,
+                ).label("today_revenue"),
+                func.count(func.distinct(case((Order.created_at >= week_start, Order.id), else_=None))).label(
+                    "week_orders"
+                ),
+                func.coalesce(
+                    func.sum(case((Order.created_at >= week_start, OrderItem.count), else_=0)),
+                    0,
+                ).label("week_items"),
+                func.coalesce(
+                    func.sum(case((Order.created_at >= week_start, OrderItem.total), else_=0)),
+                    0,
+                ).label("week_revenue"),
             )
-        ).one()
-        return {
-            "orders_count": int(row.orders_count or 0),
-            "sold_items": int(row.sold_items or 0),
-            "revenue": int(row.revenue or 0),
-        }
-
-    today_sales = await _sales_between(today_start)
-    week_sales = await _sales_between(week_start)
+            .select_from(Order)
+            .join(OrderItem, OrderItem.order_id == Order.id)
+            .where(Order.status.in_(sold_statuses), Order.created_at >= week_start)
+        )
+    ).one()
+    today_sales = {
+        "orders_count": int(period_sales_row.today_orders or 0),
+        "sold_items": int(period_sales_row.today_items or 0),
+        "revenue": int(period_sales_row.today_revenue or 0),
+    }
+    week_sales = {
+        "orders_count": int(period_sales_row.week_orders or 0),
+        "sold_items": int(period_sales_row.week_items or 0),
+        "revenue": int(period_sales_row.week_revenue or 0),
+    }
 
     new_orders = int(
         (
