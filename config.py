@@ -125,8 +125,12 @@ class Configuration:
     RATE_LIMIT_PER_HOUR: int = int(os.getenv('RATE_LIMIT_PER_HOUR', '6000'))
     CORS_ORIGINS: str = os.getenv(
         'CORS_ORIGINS',
-        'http://localhost:5173,http://localhost:3000,https://textile.okach-admin.uz,https://unversal-admin.vercel.app',
+        'http://localhost:5173,http://localhost:3000,https://textile.okach-admin.uz,https://unversal-admin.vercel.app,https://khivacode.vercel.app',
     )
+    # Har qanday https://*.vercel.app frontend (preview/prod) uchun CORS.
+    CORS_ALLOW_VERCEL: bool = os.getenv('CORS_ALLOW_VERCEL', 'true').lower() in {
+        '1', 'true', 'yes', 'on',
+    }
     SMTP_ENABLED: bool = os.getenv('SMTP_ENABLED', 'false').lower() in {'1', 'true', 'yes', 'on'}
     SMTP_HOST: str = os.getenv('SMTP_HOST', 'smtp.gmail.com')
     SMTP_PORT: int = int(os.getenv('SMTP_PORT', '465'))

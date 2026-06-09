@@ -38,7 +38,7 @@ from fast_routers.dashboard import router as dashboard_router
 from fast_routers.alerts import router as alerts_router
 from fast_routers.bot_settings import router as bot_settings_router
 from models import db
-from utils.cors import cors_allowed_origins, cors_headers_for_request
+from utils.cors import cors_allowed_origins, cors_headers_for_request, cors_origin_regex
 from utils.performance import PerformanceMonitoringMiddleware
 from utils.logger import logger
 from utils.rate_limit import RateLimitMiddleware
@@ -189,9 +189,11 @@ app.include_router(bot_settings_router, prefix="/api")
 
 app.add_middleware(SessionMiddleware, secret_key=conf.SECRET_KEY)
 
+_cors_regex = cors_origin_regex()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_allowed_origins(),
+    allow_origin_regex=_cors_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
