@@ -38,6 +38,7 @@ from fast_routers.dashboard import router as dashboard_router
 from fast_routers.alerts import router as alerts_router
 from fast_routers.bot_settings import router as bot_settings_router
 from models import db
+from utils.cors import cors_allowed_origins, cors_headers_for_request
 from utils.performance import PerformanceMonitoringMiddleware
 from utils.logger import logger
 from utils.rate_limit import RateLimitMiddleware
@@ -190,10 +191,11 @@ app.add_middleware(SessionMiddleware, secret_key=conf.SECRET_KEY)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining"],
 )
 
 # Add rate limiting middleware
@@ -220,12 +222,14 @@ async def db_session_middleware(request: Request, call_next):
 
 
 @app.options("/{full_path:path}")
-async def preflight_handler(full_path: str):
+async def preflight_handler(request: Request, full_path: str):
     headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",
     }
+    headers.update(cors_headers_for_request(request))
+    if "Access-Control-Allow-Origin" not in headers:
+        headers["Access-Control-Allow-Origin"] = "*"
     return Response(status_code=200, headers=headers)
 
 
@@ -246,7 +250,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={
             "detail": "Ma'lumotlar noto'g'ri formatda",
             "errors": exc.errors()
-        }
+        },
+        headers=cors_headers_for_request(request),
     )
 
 
@@ -263,7 +268,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     )
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail}
+        content={"detail": exc.detail},
+        headers=cors_headers_for_request(request),
     )
 
 
@@ -282,5 +288,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "detail": "Serverda xatolik yuz berdi. Iltimos, keyinroq urinib ko'ring."
-        }
+        },
+        headers=cors_headers_for_request(request),
     )

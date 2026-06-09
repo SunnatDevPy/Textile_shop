@@ -481,10 +481,11 @@ async def analytics_v2(
                 }
             )
 
-        # 6) Sales by day
+        # 6) Sales by day (func.date — PG GROUP BY bilan barqaror)
+        day_bucket = func.date(Order.created_at)
         sales_by_day_q = (
             select(
-                func.date_trunc("day", Order.created_at).label("bucket"),
+                day_bucket.label("bucket"),
                 func.count(func.distinct(Order.id)).label("orders_count"),
                 func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
                 func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
@@ -492,8 +493,8 @@ async def analytics_v2(
             .select_from(Order)
             .join(OrderItem, OrderItem.order_id == Order.id)
             .where(Order.status.in_(sold_statuses))
-            .group_by(func.date_trunc("day", Order.created_at))
-            .order_by(func.date_trunc("day", Order.created_at))
+            .group_by(day_bucket)
+            .order_by(day_bucket)
         )
         if base_criteria:
             sales_by_day_q = sales_by_day_q.where(and_(*base_criteria))
@@ -512,9 +513,10 @@ async def analytics_v2(
             )
 
         # 7) Sales by week
+        week_bucket = func.date_trunc("week", Order.created_at)
         sales_by_week_q = (
             select(
-                func.date_trunc("week", Order.created_at).label("bucket"),
+                week_bucket.label("bucket"),
                 func.count(func.distinct(Order.id)).label("orders_count"),
                 func.coalesce(func.sum(OrderItem.total), 0).label("revenue"),
                 func.coalesce(func.sum(OrderItem.count), 0).label("sold_items"),
@@ -522,8 +524,8 @@ async def analytics_v2(
             .select_from(Order)
             .join(OrderItem, OrderItem.order_id == Order.id)
             .where(Order.status.in_(sold_statuses))
-            .group_by(func.date_trunc("week", Order.created_at))
-            .order_by(func.date_trunc("week", Order.created_at))
+            .group_by(week_bucket)
+            .order_by(week_bucket)
         )
         if base_criteria:
             sales_by_week_q = sales_by_week_q.where(and_(*base_criteria))

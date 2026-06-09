@@ -9,6 +9,7 @@ from starlette import status
 
 from fast_routers.admin_auth import require_admin
 from models import AdminUser, Color, Product, ProductDetail, ProductItems, ProductPhoto, Size
+from utils.product_photo_storage import replace_product_photo_row, stamp_upload_filename
 from models.database import db
 
 AdminOnlyAuth = Annotated[AdminUser, Depends(require_admin)]
@@ -56,6 +57,7 @@ async def create_product_photo(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Product topilmadi')
     _require_image_upload(photo)
     try:
+        stamp_upload_filename(photo, str(product_id))
         row = await ProductPhoto.create(product_id=product_id, photo=photo)
     except DBAPIError:
         raise HTTPException(
@@ -80,11 +82,14 @@ async def update_product_photo(
     if photo is not None:
         _require_image_upload(photo)
 
-    data = {k: v for k, v in {'product_id': product_id, 'photo': photo}.items() if v is not None}
-    if not data:
+    if product_id is None and photo is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O'zgartirish uchun ma'lumot yo'q")
     try:
-        await ProductPhoto.update(photo_id, **data)
+        if product_id is not None:
+            await ProductPhoto.update(photo_id, product_id=product_id)
+        if photo is not None:
+            row = await ProductPhoto.get_or_none(photo_id)
+            await replace_product_photo_row(row, photo)
     except DBAPIError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

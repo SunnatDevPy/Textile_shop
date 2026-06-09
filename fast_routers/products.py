@@ -10,6 +10,7 @@ from starlette import status
 from fast_routers.admin_auth import require_admin
 from models import AdminUser, Category, Collection, Product, ProductPhoto
 from models.database import db
+from utils.product_photo_storage import upsert_product_main_photo
 from utils.response import ok_response
 
 shop_product_router = APIRouter(prefix='/products', tags=['Products'])
@@ -392,7 +393,7 @@ async def create_product(
 
     if photo is not None:
         try:
-            await ProductPhoto.create(product_id=product.id, photo=photo)
+            await upsert_product_main_photo(int(product.id), photo)
         except DBAPIError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -462,7 +463,7 @@ async def update_product(
         if update_data:
             await Product.update(product_id, **update_data)
         if photo is not None:
-            await ProductPhoto.create(product_id=product_id, photo=photo)
+            await upsert_product_main_photo(product_id, photo)
     except DBAPIError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
