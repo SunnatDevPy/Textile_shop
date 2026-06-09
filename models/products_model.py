@@ -55,7 +55,9 @@ class Product(BaseModel):
 
     product_items: Mapped[list['ProductItems']] = relationship('ProductItems', lazy='selectin',back_populates='product')
     product_details: Mapped[list['ProductDetail']] = relationship('ProductDetail', lazy='selectin',back_populates='product')
-    product_photos: Mapped['ProductPhoto'] = relationship('ProductPhoto', lazy='selectin', back_populates='product')
+    product_photos: Mapped[list['ProductPhoto']] = relationship(
+        'ProductPhoto', lazy='selectin', back_populates='product'
+    )
 
     order_items: Mapped[list['OrderItem']] = relationship('OrderItem', back_populates='product', lazy='noload')
     category: Mapped['Category'] = relationship('Category', back_populates='products', lazy='joined')

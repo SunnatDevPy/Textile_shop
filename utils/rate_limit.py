@@ -6,6 +6,13 @@ from fastapi import Request, HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette import status
 
+# Payme/Click webhook va bot skaneri (404/405) limitni to'ldirmasligi uchun.
+_RATE_LIMIT_SKIP_PREFIXES = (
+    "/api/payme",
+    "/api/click",
+)
+_RATE_LIMIT_IGNORE_STATUS = frozenset({404, 405})
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Simple in-memory rate limiting middleware."""
@@ -85,35 +92,40 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         return True, ""
 
+    def _is_rate_limit_exempt(self, path: str) -> bool:
+        if path in (
+            "/api/system/health",
+            "/api/system/ready",
+            "/system/health",
+            "/system/ready",
+        ):
+            return True
+        if path.startswith("/media/"):
+            return True
+        return any(path == p or path.startswith(f"{p}/") for p in _RATE_LIMIT_SKIP_PREFIXES)
+
     async def dispatch(self, request: Request, call_next):
-        # Skip rate limiting for health checks and static files
-        if request.url.path in ["/api/system/health", "/api/system/ready", "/system/health", "/system/ready"] or \
-           request.url.path.startswith("/media/"):
+        path = request.url.path
+
+        if self._is_rate_limit_exempt(path):
             return await call_next(request)
 
-        # Get client IP
         client_ip = self._get_client_ip(request)
-
-        # Cleanup old entries periodically
         self._cleanup_old_entries()
 
-        # Check rate limit
         allowed, message = self._check_rate_limit(client_ip)
-
         if not allowed:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=message
+                detail=message,
             )
 
-        # Record this request
         now = time.time()
-        self.request_counts[client_ip].append((now, 0, 0))
-
-        # Process request
         response = await call_next(request)
 
-        # Add rate limit headers
+        if response.status_code not in _RATE_LIMIT_IGNORE_STATUS:
+            self.request_counts[client_ip].append((now, 0, 0))
+
         minute_ago = now - 60
         requests_last_minute = sum(
             1 for ts, _, _ in self.request_counts[client_ip]

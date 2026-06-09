@@ -200,7 +200,7 @@ app.add_middleware(
 app.add_middleware(
     RateLimitMiddleware,
     requests_per_minute=int(conf.RATE_LIMIT_PER_MINUTE),
-    requests_per_hour=int(conf.RATE_LIMIT_PER_MINUTE) * 10
+    requests_per_hour=int(conf.RATE_LIMIT_PER_HOUR),
 )
 
 # Add performance monitoring middleware
