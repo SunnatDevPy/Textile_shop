@@ -17,6 +17,18 @@ services:
     volumes:
       - ./media:/app/media
       - ./logs:/app/logs
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/system/health', timeout=5)",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
     restart: unless-stopped
 
   bot:
