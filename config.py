@@ -125,7 +125,7 @@ class Configuration:
     RATE_LIMIT_PER_HOUR: int = int(os.getenv('RATE_LIMIT_PER_HOUR', '6000'))
     CORS_ORIGINS: str = os.getenv(
         'CORS_ORIGINS',
-        'http://localhost:5173,http://localhost:3000,https://textile.okach-admin.uz',
+        'http://localhost:5173,http://localhost:3000,https://textile.okach-admin.uz,https://unversal-admin.vercel.app',
     )
     SMTP_ENABLED: bool = os.getenv('SMTP_ENABLED', 'false').lower() in {'1', 'true', 'yes', 'on'}
     SMTP_HOST: str = os.getenv('SMTP_HOST', 'smtp.gmail.com')
