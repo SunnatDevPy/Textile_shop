@@ -4,6 +4,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy import and_, asc, desc, func, select
+from sqlalchemy.orm import noload
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
@@ -16,6 +17,23 @@ from utils.response import ok_response
 shop_product_router = APIRouter(prefix='/products', tags=['Products'])
 
 AdminOnlyAuth = Annotated[AdminUser, Depends(require_admin)]
+
+def _serialize_shop_product(product: Product) -> dict:
+    return {
+        "id": int(product.id),
+        "category_id": int(product.category_id),
+        "collection_id": int(product.collection_id),
+        "name_uz": product.name_uz,
+        "name_ru": product.name_ru,
+        "name_eng": product.name_eng,
+        "description_uz": product.description_uz,
+        "description_ru": product.description_ru,
+        "description_eng": product.description_eng,
+        "is_active": bool(product.is_active),
+        "clothing_type": str(getattr(product, "clothing_type", Product.ClothingType.MEN.value)),
+        "price": int(product.price),
+    }
+
 
 PRODUCT_SORT_FIELDS = {
     "id": Product.id,
@@ -41,11 +59,22 @@ async def get_all_products(include_inactive: bool = False, limit: int = 100):
     Limit: max 500 ta mahsulot.
     """
     limit = max(1, min(limit, 500))
-    query = select(Product).limit(limit)
+    query = (
+        select(Product)
+        .options(
+            noload(Product.product_items),
+            noload(Product.product_details),
+            noload(Product.product_photos),
+            noload(Product.order_items),
+            noload(Product.category),
+            noload(Product.collection),
+        )
+        .limit(limit)
+    )
     if not include_inactive:
         query = query.where(Product.is_active == True)
     products = (await db.execute(query)).scalars().all()
-    return products
+    return [_serialize_shop_product(product) for product in products]
 
 
 @shop_product_router.get('/search', name='Search products', summary="Mahsulot qidirish (nom/kategoriya)")

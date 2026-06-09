@@ -29,9 +29,14 @@ class UpdateOrCreateSizeModel(BaseModel):
         return cls(name=name)
 
 
+def _serialize_size(size: Size) -> dict:
+    return {"id": int(size.id), "name": size.name}
+
+
 @size_router.get(path='', name="Size", summary="O'lchamlar ro'yxati")
 async def list_size():
-    return await Size.all()
+    sizes = await Size.all()
+    return [_serialize_size(size) for size in sizes]
 
 
 @size_router.get(path='/{size_id}', name="Collections Get One", summary="Bitta o'lchamni olish")

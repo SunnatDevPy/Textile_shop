@@ -29,9 +29,14 @@ class UpdateOrCreateColorModel(BaseModel):
         return cls(color_code=color_code)
 
 
+def _serialize_color(color: Color) -> dict:
+    return {"id": int(color.id), "color_code": color.color_code}
+
+
 @color_router.get(path='', name="Color", summary="Ranglar ro'yxati")
 async def list_color():
-    return await Color.all()
+    colors = await Color.all()
+    return [_serialize_color(color) for color in colors]
 
 @color_router.get(path='/{color_id}', name="Collections Get One", summary="Bitta rangni olish")
 async def color_get_one(color_id: int):

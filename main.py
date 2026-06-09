@@ -1,3 +1,4 @@
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response, Request, HTTPException
@@ -219,13 +220,18 @@ app.add_middleware(PerformanceMonitoringMiddleware, slow_request_threshold_ms=10
 
 @app.middleware("http")
 async def db_session_middleware(request: Request, call_next):
-    scope_token = db.set_scope(f"req-{id(request)}")
+    scope_token = db.set_scope(str(uuid.uuid4()))
     try:
         return await call_next(request)
     except Exception as e:
         logger.log_error_with_trace(e, {"path": request.url.path, "method": request.method})
         raise
     finally:
+        # Parallel so'rovlarda connection/session oqib ketmasin.
+        try:
+            await db.rollback()
+        except Exception:
+            pass
         await db.remove()
         db.reset_scope(scope_token)
 
