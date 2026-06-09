@@ -4,7 +4,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy import and_, asc, desc, func, select
-from sqlalchemy.orm import noload
+from sqlalchemy.orm import noload, selectinload
 from sqlalchemy.exc import DBAPIError
 from starlette import status
 
@@ -17,6 +17,38 @@ from utils.response import ok_response
 shop_product_router = APIRouter(prefix='/products', tags=['Products'])
 
 AdminOnlyAuth = Annotated[AdminUser, Depends(require_admin)]
+
+PRODUCT_LIST_LOAD_OPTIONS = (
+    selectinload(Product.category),
+    selectinload(Product.collection),
+    selectinload(Product.product_photos),
+    selectinload(Product.product_items),
+    selectinload(Product.product_details),
+    noload(Product.order_items),
+)
+
+
+def _serialize_category_ref(category: Category | None) -> dict | None:
+    if category is None:
+        return None
+    return {
+        "id": int(category.id),
+        "name_uz": category.name_uz,
+        "name_ru": category.name_ru,
+        "name_eng": category.name_eng,
+    }
+
+
+def _serialize_collection_ref(collection: Collection | None) -> dict | None:
+    if collection is None:
+        return None
+    return {
+        "id": int(collection.id),
+        "name_uz": collection.name_uz,
+        "name_ru": collection.name_ru,
+        "name_eng": collection.name_eng,
+    }
+
 
 def _serialize_shop_product(product: Product) -> dict:
     return {
@@ -33,6 +65,61 @@ def _serialize_shop_product(product: Product) -> dict:
         "clothing_type": str(getattr(product, "clothing_type", Product.ClothingType.MEN.value)),
         "price": int(product.price),
     }
+
+
+def _serialize_shop_product_full(product: Product) -> dict:
+    """Do'kon ro'yxati — eski format (category, photos, items, details)."""
+    payload = _serialize_shop_product(product)
+    payload["category"] = _serialize_category_ref(getattr(product, "category", None))
+    payload["collection"] = _serialize_collection_ref(getattr(product, "collection", None))
+    payload["order_items"] = []
+    payload["product_details"] = [
+        {
+            "id": int(d.id),
+            "product_id": int(d.product_id),
+            "name_uz": d.name_uz,
+            "name_ru": d.name_ru,
+            "name_eng": d.name_eng,
+        }
+        for d in (getattr(product, "product_details", None) or [])
+    ]
+    payload["product_photos"] = [
+        {
+            "id": int(ph.id),
+            "product_id": int(ph.product_id),
+            "photo": str(getattr(ph, "photo", "") or ""),
+        }
+        for ph in (getattr(product, "product_photos", None) or [])
+    ]
+    payload["product_items"] = [
+        {
+            "id": int(item.id),
+            "product_id": int(item.product_id),
+            "color_id": int(item.color_id),
+            "size_id": int(item.size_id),
+            "total_count": int(item.total_count),
+            "min_stock_level": int(getattr(item, "min_stock_level", 10) or 10),
+        }
+        for item in (getattr(product, "product_items", None) or [])
+    ]
+    return payload
+
+
+async def _fetch_products(
+    *,
+    include_inactive: bool,
+    limit: int,
+    extra_criteria: list | None = None,
+) -> list[Product]:
+    query = select(Product).options(*PRODUCT_LIST_LOAD_OPTIONS).limit(limit)
+    criteria: list = []
+    if not include_inactive:
+        criteria.append(Product.is_active == True)
+    if extra_criteria:
+        criteria.extend(extra_criteria)
+    if criteria:
+        query = query.where(and_(*criteria))
+    return list((await db.execute(query)).scalars().unique().all())
 
 
 PRODUCT_SORT_FIELDS = {
@@ -59,22 +146,8 @@ async def get_all_products(include_inactive: bool = False, limit: int = 100):
     Limit: max 500 ta mahsulot.
     """
     limit = max(1, min(limit, 500))
-    query = (
-        select(Product)
-        .options(
-            noload(Product.product_items),
-            noload(Product.product_details),
-            noload(Product.product_photos),
-            noload(Product.order_items),
-            noload(Product.category),
-            noload(Product.collection),
-        )
-        .limit(limit)
-    )
-    if not include_inactive:
-        query = query.where(Product.is_active == True)
-    products = (await db.execute(query)).scalars().all()
-    return [_serialize_shop_product(product) for product in products]
+    products = await _fetch_products(include_inactive=include_inactive, limit=limit)
+    return [_serialize_shop_product_full(product) for product in products]
 
 
 @shop_product_router.get('/search', name='Search products', summary="Mahsulot qidirish (nom/kategoriya)")
@@ -88,22 +161,20 @@ async def search_products(
     Mahsulotlarni qidirish. Limit: max 500.
     """
     limit = max(1, min(limit, 500))
-    query = select(Product).limit(limit)
-
     criteria = []
     if search:
         s = f"%{search}%"
         criteria.append((Product.name_uz.ilike(s)) | (Product.name_ru.ilike(s)) | (Product.name_eng.ilike(s)))
     if category_id is not None:
         criteria.append(Product.category_id == category_id)
-    if not include_inactive:
-        criteria.append(Product.is_active == True)
 
-    if criteria:
-        query = query.where(and_(*criteria))
-
-    products = (await db.execute(query)).scalars().all()
-    return ok_response(products, meta={"count": len(products)})
+    products = await _fetch_products(
+        include_inactive=include_inactive,
+        limit=limit,
+        extra_criteria=criteria or None,
+    )
+    payload = [_serialize_shop_product_full(product) for product in products]
+    return ok_response(payload, meta={"count": len(payload)})
 
 
 @shop_product_router.get('/search/advanced', name='Advanced product search', summary="Mahsulotlarni kengaytirilgan filter bilan qidirish")
@@ -216,19 +287,25 @@ async def list_products_by_category(category_id: int, include_inactive: bool = F
     Kategoriya bo'yicha mahsulotlar. Limit: max 500.
     """
     limit = max(1, min(limit, 500))
-    query = select(Product).where(Product.category_id == category_id).limit(limit)
-    if not include_inactive:
-        query = query.where(Product.is_active == True)
-    products = (await db.execute(query)).scalars().all()
-    return products
+    products = await _fetch_products(
+        include_inactive=include_inactive,
+        limit=limit,
+        extra_criteria=[Product.category_id == category_id],
+    )
+    return [_serialize_shop_product_full(product) for product in products]
 
 
 @shop_product_router.get('/{product_id}', name='Get product', summary="Bitta mahsulotni olish")
 async def get_product(product_id: int):
-    product = await Product.get_or_none(product_id)
+    query = (
+        select(Product)
+        .options(*PRODUCT_LIST_LOAD_OPTIONS)
+        .where(Product.id == product_id)
+    )
+    product = (await db.execute(query)).scalars().unique().one_or_none()
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Product topilmadi')
-    return {'product': product}
+    return {"product": _serialize_shop_product_full(product)}
 
 
 @shop_product_router.get('/admin-table', summary="Mahsulotlar admin jadvali: pagination + sort + filter")
